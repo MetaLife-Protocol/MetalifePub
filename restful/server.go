@@ -28,14 +28,14 @@ import (
 )
 
 var Config *params.ApiConfig
+
 var longCtx context.Context
+
 var quitSignal chan struct{}
+
 var client *ssbClient.Client
+
 var log kitlog.Logger
-
-////////////////////////////////////////////////////////////////
-
-//////////////////////////////////////////////////////////////////////////////
 
 func Start(ctx context.Context) {
 	Config = params.NewApiServeConfig()
@@ -57,7 +57,7 @@ func Start(ctx context.Context) {
 	}
 	api.Use(rest.DefaultDevStack...)
 	router, err := rest.MakeRouter(
-		rest.Get("/ssb/api/apply-invite-code", ApplyInviteCode),
+		//rest.Get("/ssb/api/apply-invite-code", ApplyInviteCode),
 		//不需要，直接走ssb消息发过来rest.Post("ssb/debug/get-message",getMessage),
 		rest.Get("/ssb/api/likes", GetLikes),
 		rest.Get("/ssb/api/node-address", clientid2Address),
@@ -196,7 +196,7 @@ func ExecOnce() error {
 
 func newClient(ctx *cli.Context) (*ssbClient.Client, error) {
 	// todo
-	sockPath := "/home/lingtuan/.ssb-go/socket" //ctx.String("unixsock")
+	sockPath := "~/.ssb-go/socket" //ctx.String("unixsock")
 	if sockPath != "" {
 		client, err := ssbClient.NewUnix(sockPath, ssbClient.WithContext(nil))
 		if err != nil {
@@ -300,20 +300,7 @@ func jsonDrain1(r *muxrpc.ByteSource) error {
 		//2、记录like的统计结果
 		contentJust := string(msgStruct.Content[0])
 		if contentJust == "{" {
-			//fmt.Println("??????????????????????????????????????")
 			//1、like的信息
-			/*
-				"content":
-				{
-					"type":"vote",
-					"vote":
-					{
-						"link":"%093tLb09WGxFyFfdYsgi955h/1uGxc+zCXS2b4ZCQH0=.sha256",
-						"value":1,
-						"expression":"Like"
-					}
-				},
-			*/
 			cvs := ContentVoteStru{}
 			err = json.Unmarshal(msgStruct.Content, &cvs)
 			if err == nil {
@@ -330,14 +317,6 @@ func jsonDrain1(r *muxrpc.ByteSource) error {
 			}
 
 			//3、about即修改备注名为hex-address的信息
-			/*
-				"content":
-					{
-						"type":"about",
-						"about":"@/q3ohp8l7x2H5zULoCTFM8lH3TZk/ueYb8cA7LxIHyE=.ed25519",
-						"name":"computer-node-patchwork"
-					},
-			*/
 			cau := ContentAboutStru{}
 			err = json.Unmarshal(msgStruct.Content, &cau)
 			if err == nil {
