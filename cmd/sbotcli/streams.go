@@ -142,6 +142,7 @@ var logStreamCmd = &cli.Command{
 		if err != nil {
 			return fmt.Errorf("source stream call failed: %w", err)
 		}
+		//just for test
 		err = jsonDrain1(os.Stdout, src)
 		if err != nil {
 			err = fmt.Errorf("message pump failed: %w", err)
@@ -310,12 +311,12 @@ func jsonDrain1(w io.Writer, r *muxrpc.ByteSource) error {
 			return err
 		}
 
-		/*fmt.Println("******receive a message******")
+		fmt.Println("******receive a message******")
 		fmt.Println(fmt.Sprintf("[message]previous\t:%v", msgStruct.Previous))
 		fmt.Println(fmt.Sprintf("[message]sequence\t:%v", msgStruct.Sequence))
 		fmt.Println(fmt.Sprintf("[message]author\t:%v", msgStruct.Author))
 		fmt.Println(fmt.Sprintf("[message]timestamp\t:%v", msgStruct.Timestamp))
-		fmt.Println(fmt.Sprintf("[message]hash\t:%v", msgStruct.Hash))*/
+		fmt.Println(fmt.Sprintf("[message]hash\t:%v", msgStruct.Hash))
 
 		//1、记录消息ID和author的关系
 		if msgStruct.Previous != nil { //这里需要过滤掉根消息Previous=null
@@ -331,8 +332,8 @@ func jsonDrain1(w io.Writer, r *muxrpc.ByteSource) error {
 			err = json.Unmarshal(msgStruct.Content, &cvs)
 			if err == nil {
 				if string(cvs.Type) == "vote" {
-					//fmt.Println(fmt.Sprintf("[vote]link :%v", cvs.Vote.Link))
-					//fmt.Println(fmt.Sprintf("[vote]expression :%v", cvs.Vote.Expression))
+					fmt.Println(fmt.Sprintf("[vote]link :%v", cvs.Vote.Link))
+					fmt.Println(fmt.Sprintf("[vote]expression :%v", cvs.Vote.Expression))
 					//get the Like tag ,因为like肯定在发布message后,先记录被like的link，再找author
 					if string(cvs.Vote.Expression) == "Like" {
 						LikeDetail = append(LikeDetail, cvs.Vote.Link)
@@ -347,8 +348,8 @@ func jsonDrain1(w io.Writer, r *muxrpc.ByteSource) error {
 			err = json.Unmarshal(msgStruct.Content, &cau)
 			if err == nil {
 				if string(cau.Type) == "about" {
-					//fmt.Println(fmt.Sprintf("[about]about :%v", cau.About))
-					//fmt.Println(fmt.Sprintf("[about]name :%v", cau.Name))
+					fmt.Println(fmt.Sprintf("[about]about :%v", cau.About))
+					fmt.Println(fmt.Sprintf("[about]name :%v", cau.Name))
 					Name2Hex[fmt.Sprintf("%v", cau.About)] =
 						fmt.Sprintf("%v", cau.Name)
 
@@ -387,11 +388,11 @@ func jsonDrain1(w io.Writer, r *muxrpc.ByteSource) error {
 			}
 		}
 
-		//fmt.Println("likelink:" + likeLink)
+		fmt.Println("likelink:" + likeLink)
 
 	}
 	//print for test
-	/*fmt.Println("消息ID**********发布人")
+	fmt.Println("消息ID**********发布人")
 	for key := range TempMsgMap { //取map中的值
 		fmt.Println(key, "**********", TempMsgMap[key].Author)
 	}
@@ -400,7 +401,7 @@ func jsonDrain1(w io.Writer, r *muxrpc.ByteSource) error {
 		fmt.Println(key, "**********", Name2Hex[key])
 	}
 	fmt.Println("计算出的发币结果")
-	fmt.Println(fmt.Sprintf("request test result:%s", LikeCountMap))*/
+	fmt.Println(fmt.Sprintf("request test result:%s", LikeCountMap))
 
 	return r.Err()
 }

@@ -180,12 +180,10 @@ func ExecOnce() error {
 	}
 	*/
 	//var args = getStreamArgs(ctx)
-	fmt.Println("ExecOnce(1)")
 	src, err := client.Source(longCtx, muxrpc.TypeJSON, muxrpc.Method{"createLogStream"}, nil)
 	if err != nil {
 		return fmt.Errorf("source stream call failed: %w", err)
 	}
-	fmt.Println("ExecOnce(2)")
 	err = jsonDrain1(src)
 	if err != nil {
 		err = fmt.Errorf("message pump failed: %w", err)
@@ -253,7 +251,6 @@ func jsonDrain1(r *muxrpc.ByteSource) error {
 	Name2Hex = make(map[string]string)
 	LikeCountMap = make(map[string]*LasterNumLikes)
 	LikeDetail = []string{}
-	fmt.Println("has jsonDrain1")
 	for r.Next(context.TODO()) { // read/write loop for messages
 
 		buf.Reset()

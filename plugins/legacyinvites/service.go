@@ -109,6 +109,12 @@ func New(
 	}, nil
 }
 
+type inviteState struct {
+	CreateArguments
+
+	Used uint // how many times this invite was used already
+}
+
 // Create creates a new invite with a note attached and a number of uses before it expires.
 func (s *Service) Create(uses uint, note string) (*invite.Token, error) {
 	var inv invite.Token
@@ -118,7 +124,6 @@ func (s *Service) Create(uses uint, note string) (*invite.Token, error) {
 		var dbKey []byte
 		for {
 			rand.Read(inv.Seed[:])
-
 			inviteKeyPair, err := ssb.NewKeyPair(bytes.NewReader(inv.Seed[:]), refs.RefAlgoFeedSSB1)
 			if err != nil {
 				return fmt.Errorf("invite/create: generate seeded keypair (%w)", err)
@@ -132,12 +137,11 @@ func (s *Service) Create(uses uint, note string) (*invite.Token, error) {
 				return fmt.Errorf("invite/create: failed to probe new key (%w)", err)
 			}
 		}
-
 		// store pub key with params (ties, note)
 		st := inviteState{Used: 0}
 		st.Uses = uses
 		st.Note = note
-
+		//todo del note default? or default some infomation?
 		data, err := json.Marshal(st)
 		if err != nil {
 			return fmt.Errorf("invite/create: failed to marshal state data (%w)", err)
@@ -158,10 +162,4 @@ func (s *Service) Create(uses uint, note string) (*invite.Token, error) {
 	}
 
 	return &inv, nil
-}
-
-type inviteState struct {
-	CreateArguments
-
-	Used uint // how many times this invite was used already
 }
