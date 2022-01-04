@@ -50,18 +50,18 @@ The pub server program ,which will provide client access and message log synchro
 **sbotcli**
 The pub message monitoring service provides:
 
-1、Get the eth address corresponding to the customer ID:
+1.Get the eth address corresponding to the customer ID:
 
 ```go
 GET http://{your server ip}:18008/ssb/api/node-address
 ```
 
-2、Get Like Statistics
+2.Get Like Statistics
 ```go
 GET http://{your server ip}:18008/ssb/api/likes
 ```
 
-3、Channel establishment and pre-deposit service  
+3.Channel establishment and pre-deposit service  
 
 **Notice**Here is the spectrum ,TokenAddress=”0x6601F810eaF2fa749EEa10533Fd4CC23B8C791dc”
-4、Extension: The monitoring service has mastered all the likes and other types of messages, and will provide details of the like-source of the specific likes in the follow-up.
+4.Extension: The monitoring service has mastered all the likes and other types of messages, and will provide details of the like-source of the specific likes in the follow-up.
