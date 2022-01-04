@@ -27,6 +27,7 @@ go install ./cmd/sbotcli
     Just pull the code on the master branch. This branch supports ebt-mutlifromat by default. It should be noted that a photon node needs to be run on the server where Pub is installed, and please enter the parameter configuration file **/restful/params/config.go**. The parameter of PhotonAddress(in line 46)  need to be replaced by the address of the photon node running on the same machine (this account needs to ensure that the number of SMT is sufficient, the pub node will automatically establish the channel with each connected client account, and deposit 0.1smt to the channel)
 
  **Make sure the  go-sbot and sbotcli are in the $PATH**
+ 
 1.We need to manually create a folder **. ssb-go** on the user's home directory of the server.
 
 ```go
