@@ -1,6 +1,6 @@
 # Metalife Pub installation instructions and functional description
 
-Metalife Pub is a P2P communication service built using the Scuttlebutt protocol. Its main purpose is to provide remote Peer node interactive connections and to collect like data that the authors publicly released in Pub ,which will report to super nodes for incentives. Since Pub is used as a node for Mediate Transfer, it is necessary to install the corresponding Photon node for payment functions at the same time. The following are installation instructions and related functional descriptions.
+  Metalife Pub is a P2P communication service built using the Scuttlebutt protocol. Its main purpose is to provide remote Peer node interactive connections and to collect like data that the authors publicly released in Pub ,which will report to super nodes for incentives. Since Pub is used as a node for Mediate Transfer, it is necessary to install the corresponding Photon node for payment functions at the same time. The following are installation instructions and related functional descriptions.
 
 ## Pub Installation  
 
@@ -12,7 +12,7 @@ Metalife Pub is a P2P communication service built using the Scuttlebutt protocol
 
 The above configuration is the basic configuration, and the hardware configuration can be further upgraded for Pubs with storage requirements in the future.
 
-### Install
+### Install the pub
 
  This version of Pub is written in Go. We recommend that users pre-install the latest version of Go. And further execute the following script to install pub.
 
@@ -59,7 +59,7 @@ GET http://{your server ip}:18008/ssb/api/node-address
 GET http://{your server ip}:18008/ssb/api/likes
 ```
 
-3、Channel establishment and pre-deposit service (automatic)
+3、Channel establishment and pre-deposit service  
 
 **Notice**Here is the spectrum ,TokenAddress=”0x6601F810eaF2fa749EEa10533Fd4CC23B8C791dc”
 4、Extension: The monitoring service has mastered all the likes and other types of messages, and will provide details of the like-source of the specific likes in the follow-up.
