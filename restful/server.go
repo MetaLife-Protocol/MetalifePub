@@ -23,6 +23,7 @@ import (
 	"math/big"
 	"net"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 )
@@ -61,7 +62,27 @@ func Start(ctx context.Context) {
 		//不需要，直接走ssb消息发过来rest.Post("ssb/debug/get-message",getMessage),
 		rest.Get("/ssb/api/likes", GetLikes),
 		rest.Get("/ssb/api/node-address", clientid2Address),
+		rest.Post("/ssb/api/id2eth", clientid2Address),
 	)
+	/*
+		//登记CLIENT ID AND YOUR ETH ADDRESS
+		http-api:	http://106.52.171.12:18008/ssb/api/id2eth
+		POST
+		参数：
+		{
+	            "client_id": "@/q3ohp8l7x2H5zULoCTFM8lH3TZk/ueYb8cA7LxIHyE=.ed25519",
+	            "client_eth_address": "0x6d946D646879d31a45bCE89a68B24cab165E9A2A"
+	        }
+		返回：
+		{
+	    "error_code": 0,
+	    "error_message": "SUCCESS",
+	    "data":{
+			"result":"ok",
+			"timestamp":1637901258137
+			}
+		}
+	*/
 	if err != nil {
 		//fmt.Println(fmt.Sprintf("make router : %s",err))
 		level.Error(log).Log("make router err", err)
@@ -194,7 +215,7 @@ func ExecOnce() error {
 
 func newClient(ctx *cli.Context) (*ssbClient.Client, error) {
 	// todo
-	sockPath := "~/.ssb-go/socket" //ctx.String("unixsock")
+	sockPath := os.Getenv("HOME") + "/.ssb-go/socket" //ctx.String("unixsock")
 	if sockPath != "" {
 		client, err := ssbClient.NewUnix(sockPath, ssbClient.WithContext(nil))
 		if err != nil {

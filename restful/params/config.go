@@ -23,6 +23,8 @@ func NewApiServeConfig() *ApiConfig {
 
 }
 
+var PubTcpHostAddress = "106.52.171.12:8008"
+
 const (
 	// These are the multipliers for ether denominations.
 	// Example: To get the wei value of an amount in 'douglas', use

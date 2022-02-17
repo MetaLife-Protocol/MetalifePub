@@ -32,7 +32,7 @@ import (
 	"go.cryptoscope.co/ssb"
 	ssbClient "go.cryptoscope.co/ssb/client"
 	"go.cryptoscope.co/ssb/plugins/legacyinvites"
-	"go.cryptoscope.co/ssb/restful"
+	"go.cryptoscope.co/ssb/restful/params"
 	"go.mindeco.de/ssb-refs"
 	"os/signal"
 	"syscall"
@@ -71,7 +71,7 @@ var app = cli.App{
 
 	Flags: []cli.Flag{
 		&cli.StringFlag{Name: "shscap", Value: "1KHLiKZvAvjbY1ziZEHMXawbCEIM6qwjCDm3VYRan/s=", Usage: "shs key"},
-		&cli.StringFlag{Name: "addr", Value: "localhost:8008", Usage: "tcp address of the sbot to connect to (or listen on)"},
+		&cli.StringFlag{Name: "addr", Value: params.PubTcpHostAddress, Usage: "tcp address of the sbot to connect to (or listen on)"},
 		&cli.StringFlag{Name: "remoteKey", Value: "", Usage: "the remote pubkey you are connecting to (by default the local key)"},
 		&keyFileFlag,
 		&unixSockFlag,
@@ -80,9 +80,9 @@ var app = cli.App{
 		&cli.StringFlag{Name: "timeout", Value: "3600s", Usage: "pass a duration (like 3s or 5m) after which it times out, empty string to disable"},
 	},
 
-	Before:   initClient,
+	Before: initClient,
 	Commands: []*cli.Command{
-		/*aliasCmd,
+		aliasCmd,
 		blobsCmd,
 		blockCmd,
 		friendsCmd,
@@ -99,7 +99,7 @@ var app = cli.App{
 		sourceCmd,
 		connectCmd,
 		publishCmd,
-		groupsCmd,*/
+		groupsCmd,
 	},
 }
 
@@ -128,7 +128,7 @@ func main() {
 	if err := app.Run(os.Args); err != nil {
 		level.Error(log).Log("run-failure", err)
 	}
-	restful.Start(longctx)
+	//restful.Start(longctx)
 
 }
 
@@ -163,11 +163,11 @@ func initClient(ctx *cli.Context) error {
 
 func newClient(ctx *cli.Context) (*ssbClient.Client, error) {
 	sockPath := ctx.String("unixsock")
-	fmt.Println("sockPath is " + sockPath)
 	if sockPath != "" {
 		client, err := ssbClient.NewUnix(sockPath, ssbClient.WithContext(longctx))
 		if err != nil {
-			level.Warn(log).Log("client", "unix-path based init failed", "err", err)
+			level.Debug(log).Log("client", "unix-path based init failed", "err", err)
+			level.Info(log).Log("client", "Now try switching to TCP working mode and init it")
 			return newTCPClient(ctx)
 		}
 		level.Info(log).Log("client", "connected", "method", "unix sock")
@@ -209,7 +209,9 @@ func newTCPClient(ctx *cli.Context) (*ssbClient.Client, error) {
 	if err != nil {
 		return nil, fmt.Errorf("init: failed to connect to %s: %w", shsAddr.String(), err)
 	}
-	level.Info(log).Log("client", "connected", "method", "tcp")
+	//level.Info(log).Log("client", "connected", "method", "tcp")
+	level.Info(log).Log("client", "connected", "method", "tcp", "Working Mode", "tcp", "Pub Server", shsAddr.String())
+
 	return client, nil
 }
 

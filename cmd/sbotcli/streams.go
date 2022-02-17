@@ -143,7 +143,7 @@ var logStreamCmd = &cli.Command{
 			return fmt.Errorf("source stream call failed: %w", err)
 		}
 		//just for test
-		err = jsonDrain1(os.Stdout, src)
+		err = jsonDrain(os.Stdout, src)
 		if err != nil {
 			err = fmt.Errorf("message pump failed: %w", err)
 		}
@@ -273,6 +273,7 @@ func jsonDrain(w io.Writer, r *muxrpc.ByteSource) error {
 		if err != nil {
 			return err
 		}
+		fmt.Println("\n")
 
 	}
 	return r.Err()
