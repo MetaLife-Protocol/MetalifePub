@@ -51,7 +51,8 @@ func (h createHandler) HandleCall(ctx context.Context, req *muxrpc.Request) {
 	// parse passed arguments
 	var args CreateArguments
 	if err := json.Unmarshal(req.RawArgs, &args); err != nil {
-		args.Uses = 2000
+		args.Uses = 20000
+		fmt.Println("20000 times")
 		//req.CloseWithError(fmt.Errorf("cant create invite with wrong arguments111"))
 	}
 

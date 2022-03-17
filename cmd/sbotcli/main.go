@@ -32,6 +32,7 @@ import (
 	"go.cryptoscope.co/ssb"
 	ssbClient "go.cryptoscope.co/ssb/client"
 	"go.cryptoscope.co/ssb/plugins/legacyinvites"
+	"go.cryptoscope.co/ssb/restful"
 	"go.cryptoscope.co/ssb/restful/params"
 	"go.mindeco.de/ssb-refs"
 	"os/signal"
@@ -52,6 +53,7 @@ var (
 
 	keyFileFlag  = cli.StringFlag{Name: "key,k", Value: "unset"}
 	unixSockFlag = cli.StringFlag{Name: "unixsock", Usage: "if set, unix socket is used instead of tcp"}
+	dataDir      = cli.StringFlag{Name: "datadir", Usage: "directory for storing pub's parsing data"}
 )
 
 func init() {
@@ -59,7 +61,9 @@ func init() {
 	check(err)
 
 	keyFileFlag.Value = filepath.Join(u.HomeDir, ".ssb-go", "secret")
-	unixSockFlag.Value = filepath.Join(u.HomeDir, ".ssb-go", "socket")
+	//we use tcp instead of UNIX SOCKET
+	//unixSockFlag.Value = filepath.Join(u.HomeDir, ".ssb-go", "socket")
+	dataDir.Value = filepath.Join(u.HomeDir, ".ssb-go", "pubdata")
 
 	log = term.NewColorLogger(os.Stderr, kitlog.NewLogfmtLogger, colorFn)
 }
@@ -73,6 +77,7 @@ var app = cli.App{
 		&cli.StringFlag{Name: "shscap", Value: "1KHLiKZvAvjbY1ziZEHMXawbCEIM6qwjCDm3VYRan/s=", Usage: "shs key"},
 		&cli.StringFlag{Name: "addr", Value: params.PubTcpHostAddress, Usage: "tcp address of the sbot to connect to (or listen on)"},
 		&cli.StringFlag{Name: "remoteKey", Value: "", Usage: "the remote pubkey you are connecting to (by default the local key)"},
+		&dataDir,
 		&keyFileFlag,
 		&unixSockFlag,
 		&cli.BoolFlag{Name: "verbose,vv", Usage: "print muxrpc packets"},
@@ -128,8 +133,6 @@ func main() {
 	if err := app.Run(os.Args); err != nil {
 		level.Error(log).Log("run-failure", err)
 	}
-	//restful.Start(longctx)
-
 }
 
 func todo(ctx *cli.Context) error {
@@ -158,6 +161,9 @@ func initClient(ctx *cli.Context) error {
 		os.Exit(0)
 	}()
 
+	//start pub message analysis service
+	restful.Start(ctx)
+
 	return nil
 }
 
@@ -179,7 +185,6 @@ func newClient(ctx *cli.Context) (*ssbClient.Client, error) {
 }
 
 func newTCPClient(ctx *cli.Context) (*ssbClient.Client, error) {
-	fmt.Println("newTCPClient key is " + ctx.String("key"))
 	localKey, err := ssb.LoadKeyPair(ctx.String("key"))
 	if err != nil {
 		return nil, err

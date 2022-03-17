@@ -23,7 +23,8 @@ func NewApiServeConfig() *ApiConfig {
 
 }
 
-var PubTcpHostAddress = "106.52.171.12:8008"
+//var PubTcpHostAddress = "106.52.171.12:8008"
+var PubTcpHostAddress = "54.179.3.93:8008"
 
 const (
 	// These are the multipliers for ether denominations.

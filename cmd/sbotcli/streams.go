@@ -18,6 +18,7 @@ import (
 	"go.cryptoscope.co/ssb/message"
 	"go.cryptoscope.co/ssb/message/legacy"
 	"go.mindeco.de/ssb-refs"
+	"time"
 )
 
 var streamFlags = []cli.Flag{
@@ -44,7 +45,7 @@ func getStreamArgs(ctx *cli.Context) message.CreateHistArgs {
 	args := message.CreateHistArgs{
 		ID:     ref,
 		Seq:    ctx.Int64("seq"),
-		AsJSON: ctx.Bool("asJSON"),
+		AsJSON: ctx.Bool("a sJSON"),
 	}
 	args.Limit = ctx.Int64("limit")
 	args.Gt = message.RoundedInteger(ctx.Int64("gt"))
@@ -273,6 +274,7 @@ func jsonDrain(w io.Writer, r *muxrpc.ByteSource) error {
 		if err != nil {
 			return err
 		}
+		time.Sleep(time.Millisecond * 1)
 		fmt.Println("\n")
 
 	}
