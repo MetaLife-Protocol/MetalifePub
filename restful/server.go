@@ -170,6 +170,7 @@ func newTCPClient(ctx *cli.Context) (*ssbClient.Client, error) {
 	return client, nil
 }
 
+// initDb
 func initDb(ctx *cli.Context) error {
 	pubdatadir := ctx.String("datadir")
 
@@ -246,7 +247,7 @@ func DoMessageTask(ctx *cli.Context) {
 			continue
 		}
 
-		fmt.Println(fmt.Sprintf("\n\nA round of message data analysis has been completed , from TimeSanmp[%s] to [%s]", time.Now().Unix(), lastAnalysisTimesnamp, calcComplateTime))
+		fmt.Println(fmt.Sprintf("\nA round of message data analysis has been completed , from TimeSanmp[%v] to [%v]", lastAnalysisTimesnamp, calcComplateTime))
 		lastAnalysisTimesnamp = calcComplateTime
 		time.Sleep(time.Second * 30)
 	}
@@ -479,7 +480,6 @@ func SsbMessageAnalysis(r *muxrpc.ByteSource) (int64, error) {
 	//计算周期越小越好,最大程度避免在统计中有新消息过来
 
 	nowUnix := time.Now().Unix()
-	fmt.Println(nowUnix)
 	_, err := likeDB.UpdateLastScanTime(nowUnix)
 	if err != nil {
 		fmt.Println(fmt.Sprintf("Failed to UpdateLastScanTime", err))
