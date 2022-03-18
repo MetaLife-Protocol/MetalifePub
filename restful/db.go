@@ -31,16 +31,17 @@ CREATE TABLE IF NOT EXISTS "userethaddr" (
    "clientid" TEXT NULL,
    "ethaddress" TEXT NULL,
    "profile" TEXT NULL,
-   "bio" TEXT NULL
+   "bio" TEXT NULL,
+   "other1" TEXT NULL,
 );
    `
 	/*
-		CREATE TABLE IF NOT EXISTS "pubmsgscan" (
-	   "uid" INTEGER PRIMARY KEY AUTOINCREMENT,
-	   "lastscantime" INTEGER NULL,
-	   "other1" TEXT NULL,
-	   "created" INTEGER default (datetime('now', 'localtime'))
-	);
+			CREATE TABLE IF NOT EXISTS "pubmsgscan" (
+		   "uid" INTEGER PRIMARY KEY AUTOINCREMENT,
+		   "lastscantime" INTEGER NULL,
+		   "other1" TEXT NULL,
+		   "created" INTEGER default (datetime('now', 'localtime'))
+		);
 	*/
 	_, err = db.Exec(sql_table)
 	if err != nil {
@@ -71,7 +72,7 @@ func (pdb *PubDB) UpdateLastScanTime(ts int64) (affectid int64, err error) {
 	if err != nil {
 		return 0, err
 	}
-	if lastscantime == 0 {
+	if lastscantime == -1 {
 		pdb.InsertLastScanTime(ts)
 		return 1, nil
 	}
@@ -94,6 +95,7 @@ func (pdb *PubDB) SelectLastScanTime() (lastscantime int64, err error) {
 	if err != nil {
 		return 0, err
 	}
+	lastscantime = -1
 	//rows的数据类型是*sql.Rows，rows调用Close()方法代表读结束
 	defer rows.Close()
 	for rows.Next() {
@@ -121,5 +123,85 @@ func (pdb *PubDB) DeleteLastScanTime() (affectid int64, err error) {
 	}
 	affectid, err = res.LastInsertId()
 
+	return
+}
+
+// InsertUserethaddr
+func (pdb *PubDB) InsertUserethaddr(clientid, ethaddr string) (lastid int64, err error) {
+	stmt, err := pdb.db.Prepare("INSERT INTO userethaddr(clientid,ethaddress) VALUES (?,?)")
+	if err != nil {
+		return 0, err
+	}
+	res, err := stmt.Exec(clientid, ethaddr)
+	if err != nil {
+		return 0, err
+	}
+	lastid, err = res.LastInsertId()
+
+	return
+}
+
+// UpdateUserethaddr
+func (pdb *PubDB) UpdateUserEthAddr(clientid, ethaddr string) (affectid int64, err error) {
+	ehtAddr, err := pdb.SelectUserEthAddrById(clientid)
+	if err != nil {
+		return 0, err
+	}
+	if ehtAddr == "-1" {
+		pdb.InsertUserethaddr(clientid, ethaddr)
+		return 1, nil
+	}
+	stmt, err := pdb.db.Prepare("update userethaddr set ethaddress=? WHERE clientid=?")
+	if err != nil {
+		return 0, err
+	}
+	res, err := stmt.Exec(ethaddr, clientid)
+	if err != nil {
+		return 0, err
+	}
+	affectid, err = res.LastInsertId()
+
+	return
+}
+
+// SelectUserEthAddrById
+func (pdb *PubDB) SelectUserEthAddrById(clientid string) (ethaddr string, err error) {
+	rows, err := pdb.db.Query("SELECT ethaddress FROM userethaddr WHERE clientid=?", clientid)
+	if err != nil {
+		return "", err
+	}
+	ethaddr = "-1"
+	defer rows.Close()
+	for rows.Next() {
+		var ethAddr string
+
+		err = rows.Scan(&ethAddr)
+		if err != nil {
+			return "", err
+		}
+		ethaddr = ethAddr
+		break
+	}
+	return
+}
+
+// SelectUserEthAddrAll
+func (pdb *PubDB) SelectUserEthAddrAll() (ethaddrs map[string]string, err error) {
+	rows, err := pdb.db.Query("SELECT clientid,ethaddress FROM userethaddr")
+	if err != nil {
+		return nil, err
+	}
+	name2hex := make(map[string]string)
+	defer rows.Close()
+	for rows.Next() {
+		var cid string
+		var ethAddr string
+		err = rows.Scan(&cid, &ethAddr)
+		if err != nil {
+			return nil, err
+		}
+		name2hex[cid] = ethAddr
+	}
+	ethaddrs = name2hex
 	return
 }

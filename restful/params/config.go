@@ -1,5 +1,7 @@
 package params
 
+import "time"
+
 type ApiConfig struct {
 	Host  string
 	Port  int
@@ -44,6 +46,12 @@ const (
 )
 
 var PhotonHost = "127.0.0.1:15001"
+
 var PhotonAddress = "0x0D0EFCcda4f079C0dD1B728297A43eE54d7170Cd"
+
 var TokenAddress = "0x6601F810eaF2fa749EEa10533Fd4CC23B8C791dc"
+
 var SettleTime = 100
+
+// MsgScanInterval 消息二轮扫描的时间间隔
+var MsgScanInterval = time.Second * 15

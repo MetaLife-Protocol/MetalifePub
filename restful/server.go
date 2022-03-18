@@ -72,7 +72,8 @@ func Start(ctx *cli.Context) {
 		//不需要，直接走ssb消息发过来rest.Post("ssb/debug/get-message",getMessage),
 		rest.Get("/ssb/api/likes", GetLikes),
 		rest.Get("/ssb/api/node-address", clientid2Address),
-		rest.Post("/ssb/api/id2eth", clientid2Address),
+		rest.Post("/ssb/api/node-address", getEthAddrByID),
+		rest.Post("/ssb/api/id2eth", UpdateEthAddr),
 	)
 	/*
 			//登记CLIENT ID AND YOUR ETH ADDRESS
@@ -190,6 +191,7 @@ func initDb(ctx *cli.Context) error {
 		}
 	}
 	lastAnalysisTimesnamp = lstime
+
 	likeDB = likedb
 
 	return nil
@@ -226,7 +228,7 @@ func DoMessageTask(ctx *cli.Context) {
 		args.Private = false
 		src, err := client.Source(longCtx, muxrpc.TypeJSON, muxrpc.Method{"createLogStream"}, args)
 		if err != nil {
-			//client可能失效,则需要重建新的连接
+			//client可能失效,则需要重建新的连接,链接资源的释放在ssb-server端
 			fmt.Println(fmt.Sprintf("Source stream call failed: %w ,will try other tcp connect socket...", err))
 			otherClient, err := newClient(ctx)
 			if err != nil {
@@ -249,11 +251,12 @@ func DoMessageTask(ctx *cli.Context) {
 
 		fmt.Println(fmt.Sprintf("\nA round of message data analysis has been completed , from TimeSanmp[%v] to [%v]", lastAnalysisTimesnamp, calcComplateTime))
 		lastAnalysisTimesnamp = calcComplateTime
-		time.Sleep(time.Second * 30)
+
+		time.Sleep(params.MsgScanInterval)
 	}
 }
 
-// change to
+// change to tcp scene
 
 func clientid2Address(w rest.ResponseWriter, r *rest.Request) {
 	var resp *APIResponse
@@ -262,7 +265,41 @@ func clientid2Address(w rest.ResponseWriter, r *rest.Request) {
 		writejson(w, resp)
 	}()
 
-	name2addr, err := GetNodeEthAddress()
+	name2addr, err := GetAllNodesEthAddress()
+	resp = NewAPIResponse(err, name2addr)
+}
+
+func getEthAddrByID(w rest.ResponseWriter, r *rest.Request) {
+	var resp *APIResponse
+	defer func() {
+		fmt.Println(fmt.Sprintf("Restful Api Call ----> getEthAddrByID ,err=%s", resp.ToFormatString()))
+		writejson(w, resp)
+	}()
+	var req Name2EthAddrReponse
+	err := r.DecodeJsonPayload(&req)
+	if err != nil {
+		rest.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	var cid = req.Name
+	name2addr, err := GetNodeEthByID(cid)
+	resp = NewAPIResponse(err, name2addr)
+}
+
+func UpdateEthAddr(w rest.ResponseWriter, r *rest.Request) {
+	var resp *APIResponse
+	defer func() {
+		fmt.Println(fmt.Sprintf("Restful Api Call ----> getEthAddrByID ,err=%s", resp.ToFormatString()))
+		writejson(w, resp)
+	}()
+	var req Name2EthAddrReponse
+	err := r.DecodeJsonPayload(&req)
+	if err != nil {
+		rest.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	var cid = req.Name
+	name2addr, err := GetNodeEthByID(cid)
 	resp = NewAPIResponse(err, name2addr)
 }
 
@@ -324,29 +361,44 @@ func GetLikeSum() (datas []*LasterNumLikes, err error) {
 	return datas, nil
 }
 
-func GetNodeEthAddress() (datas []*Name2EthAddrReponse, err error) {
-	//err = ExecOnce()
-	time.Sleep(time.Second * 2)
+func GetAllNodesEthAddress() (datas []*Name2EthAddrReponse, err error) {
+
+	ethadds, err := likeDB.SelectUserEthAddrAll()
 	if err != nil {
-		fmt.Println(fmt.Sprintf("exec log err : %s", err))
+		fmt.Println(fmt.Sprintf("Failed to SelectUserEthAddrAll", err))
 		return
 	}
-
-	for key, ethaddr := range Name2Hex {
+	for key, ethaddr := range ethadds {
 		d := &Name2EthAddrReponse{
 			Name:       key,
 			EthAddress: ethaddr,
 		}
 		datas = append(datas, d)
 		//todo
-		go ChannelDeal(ethaddr)
+		//go ChannelDeal(ethaddr)
 	}
 	return datas, nil
+}
+
+func GetNodeEthByID(cid string) (data *Name2EthAddrReponse, err error) {
+	ethadd, err := likeDB.SelectUserEthAddrById(cid)
+	if err != nil {
+		fmt.Println(fmt.Sprintf("Failed to SelectUserEthAddrAll", err))
+		return
+	}
+	data = &Name2EthAddrReponse{
+		Name:       cid,
+		EthAddress: ethadd,
+	}
+	fmt.Println(ethadd)
+	return
 }
 
 type Name2EthAddrReponse struct {
 	Name       string `json:"client_id"`
 	EthAddress string `json:"client_eth_address"`
+	Profile    string `json:"client_profile"`
+	Bio        string `json:"client_bio"`
 }
 
 func SsbMessageAnalysis(r *muxrpc.ByteSource) (int64, error) {
@@ -357,6 +409,8 @@ func SsbMessageAnalysis(r *muxrpc.ByteSource) (int64, error) {
 	Name2Hex = make(map[string]string)
 	LikeCountMap = make(map[string]*LasterNumLikes)
 	LikeDetail = []string{}
+	UnLikeDetail = []string{}
+
 	for r.Next(context.TODO()) { // read/write loop for messages
 
 		buf.Reset()
@@ -370,7 +424,7 @@ func SsbMessageAnalysis(r *muxrpc.ByteSource) (int64, error) {
 
 		/*_, err = buf.WriteTo(os.Stdout)
 		if err != nil {
-			return err
+			return 0,err
 		}
 		continue*/
 
@@ -473,19 +527,26 @@ func SsbMessageAnalysis(r *muxrpc.ByteSource) (int64, error) {
 			LikeCountMap[author.Author].LasterVoteNum--
 			//fmt.Println("unlikelink:" + unLikeLink)
 		}
-
 	}
 
 	//不能以最后一条消息的时间作为本轮计算的时间点,后期改为从服务器上取得pub的时间,
 	//计算周期越小越好,最大程度避免在统计中有新消息过来
-
+	//sava db
 	nowUnix := time.Now().Unix()
 	_, err := likeDB.UpdateLastScanTime(nowUnix)
 	if err != nil {
 		fmt.Println(fmt.Sprintf("Failed to UpdateLastScanTime", err))
 		return 0, err
 	}
-
+	//更新table userethaddr
+	//save db
+	for key := range Name2Hex {
+		_, err := likeDB.UpdateUserEthAddr(key, Name2Hex[key])
+		if err != nil {
+			fmt.Println(fmt.Sprintf("Failed to UpdateUserEthAddr", err))
+			return 0, err
+		}
+	}
 	/*//print for test
 	fmt.Println("本轮消息ID**********发布人")
 	for key := range TempMsgMap { //取map中的值
@@ -497,7 +558,7 @@ func SsbMessageAnalysis(r *muxrpc.ByteSource) (int64, error) {
 	}
 	fmt.Println("计算出的点赞结果")
 	for key := range LikeCountMap { //取map中的值
-		fmt.Println(fmt.Sprintf("%s**********request test result:%s", key, LikeCountMap[key]))
+		fmt.Println(fmt.Sprintf("%s**********request test result:%v", key, LikeCountMap[key]))
 	}
 
 	return nowUnix, nil
@@ -518,18 +579,6 @@ var Name2Hex map[string]string
 // LikeCount for api service link(eg:%vSK7+wJ7ceZNVUCkTQliXrhgfffr5njb5swTrEZLDiM=.sha256)
 var LikeCountMap map[string]*LasterNumLikes
 
-/*
-	"content":
-	{
-		"type":"vote",
-		"vote":
-		{
-			"link":"%GSonxYwRNuQqyl+0QF1OpmMpdkBlHCEgLnV9m7872hQ=.sha256",
-			"value":1,
-			"expression":"Like"
-		}
-	},
-*/
 // ContentVoteStru
 type ContentVoteStru struct {
 	Type string    `json:"type"`
