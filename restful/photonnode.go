@@ -55,7 +55,7 @@ type PhotonNodeRuntime struct {
 }
 
 // GetChannelWithBigInt :
-func (node *PhotonNode) GetChannelWithBigInt(partnerNode *PhotonNode, tokenAddr string) *Channel {
+func (node *PhotonNode) GetChannelWithBigInt(partnerNode *PhotonNode, tokenAddr string) (*Channel, error) {
 	req := &Req{
 		FullURL: node.Host + "/api/1/channels",
 		Method:  http.MethodGet,
@@ -64,25 +64,25 @@ func (node *PhotonNode) GetChannelWithBigInt(partnerNode *PhotonNode, tokenAddr 
 	}
 	body, err := req.Invoke()
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	var nodeChannels []Channel
 	err = json.Unmarshal(body, &nodeChannels)
 	if err != nil {
 		fmt.Println(fmt.Sprintf("GetChannel Unmarshal err= %s", err))
-		//panic(err)
+		return nil, err
 	}
 	if len(nodeChannels) == 0 {
-		return nil
+		return nil, nil
 	}
 	for _, channel := range nodeChannels {
 		if channel.PartnerAddress == partnerNode.Address && channel.TokenAddress == tokenAddr {
 			channel.SelfAddress = node.Address
 			channel.Name = "CH-" + node.Name + "-" + partnerNode.Name
-			return &channel
+			return &channel, nil
 		}
 	}
-	return nil
+	return nil, nil
 }
 
 // OpenChannel :

@@ -11,8 +11,6 @@ import (
 	"go.cryptoscope.co/netwrap"
 	"go.cryptoscope.co/secretstream"
 	ssbClient "go.cryptoscope.co/ssb/client"
-	"go.cryptoscope.co/ssb/message/legacy"
-	"go.cryptoscope.co/ssb/plugins/legacyinvites"
 	"go.cryptoscope.co/ssb/restful/params"
 	kitlog "go.mindeco.de/log"
 	"go.mindeco.de/log/level"
@@ -68,32 +66,17 @@ func Start(ctx *cli.Context) {
 	}
 	api.Use(rest.DefaultDevStack...)
 	router, err := rest.MakeRouter(
-		//rest.Get("/ssb/api/apply-invite-code", ApplyInviteCode),
-		//不需要，直接走ssb消息发过来rest.Post("ssb/debug/get-message",getMessage),
-		rest.Get("/ssb/api/likes", GetLikes),
-		rest.Get("/ssb/api/node-address", clientid2Address),
-		rest.Post("/ssb/api/node-address", getEthAddrByID),
+		rest.Get("/ssb/api/likes", GetAllLikes),
+
+		//get all 'about' message,e.g:'about'='eth address'
+		rest.Get("/ssb/api/node-info", clientid2Profiles),
+
+		//get the 'about' message by client id ,e.g:'about'='eth address'
+		rest.Post("/ssb/api/node-info", clientid2Profile),
+
+		//register client's eth address to it's ID
 		rest.Post("/ssb/api/id2eth", UpdateEthAddr),
 	)
-	/*
-			//登记CLIENT ID AND YOUR ETH ADDRESS
-			http-api:	http://106.52.171.12:18008/ssb/api/id2eth
-			POST
-			参数：
-			{
-		            "client_id": "@/q3ohp8l7x2H5zULoCTFM8lH3TZk/ueYb8cA7LxIHyE=.ed25519",
-		            "client_eth_address": "0x6d946D646879d31a45bCE89a68B24cab165E9A2A"
-		        }
-			返回：
-			{
-		    "error_code": 0,
-		    "error_message": "SUCCESS",
-		    "data":{
-				"result":"ok",
-				"timestamp":1637901258137
-				}
-			}
-	*/
 	if err != nil {
 		level.Error(log).Log("make router err", err)
 		return
@@ -223,8 +206,8 @@ func DoMessageTask(ctx *cli.Context) {
 		args.Gt = message.RoundedInteger(lastAnalysisTimesnamp)
 		args.Limit = -1
 		args.Seq = 0
-		args.Keys = false
-		args.Values = false
+		args.Keys = true
+		args.Values = true
 		args.Private = false
 		src, err := client.Source(longCtx, muxrpc.TypeJSON, muxrpc.Method{"createLogStream"}, args)
 		if err != nil {
@@ -242,14 +225,14 @@ func DoMessageTask(ctx *cli.Context) {
 		}
 
 		//从上一次的计算点（数据库记录的毫秒时间戳）到最后一条记录的解析
+		time.Sleep(time.Second)
 		calcComplateTime, err := SsbMessageAnalysis(src)
 		if err != nil {
 			fmt.Println(fmt.Sprintf("Message pump failed: %w", err))
 			time.Sleep(time.Second * 5)
 			continue
 		}
-
-		fmt.Println(fmt.Sprintf("\nA round of message data analysis has been completed , from TimeSanmp[%v] to [%v]", lastAnalysisTimesnamp, calcComplateTime))
+		fmt.Println(fmt.Sprintf("A round of message data analysis has been completed , from TimeSanmp[%v] to [%v]", lastAnalysisTimesnamp, calcComplateTime))
 		lastAnalysisTimesnamp = calcComplateTime
 
 		time.Sleep(params.MsgScanInterval)
@@ -258,161 +241,133 @@ func DoMessageTask(ctx *cli.Context) {
 
 // change to tcp scene
 
-func clientid2Address(w rest.ResponseWriter, r *rest.Request) {
+// clientid2Profile
+func clientid2Profiles(w rest.ResponseWriter, r *rest.Request) {
 	var resp *APIResponse
 	defer func() {
-		fmt.Println(fmt.Sprintf("Restful Api Call ----> clientid2Address ,err=%s", resp.ToFormatString()))
+		fmt.Println(fmt.Sprintf("Restful Api Call ----> clientid2Profile ,err=%s", resp.ToFormatString()))
 		writejson(w, resp)
 	}()
 
-	name2addr, err := GetAllNodesEthAddress()
+	name2addr, err := GetAllNodesProfile()
 	resp = NewAPIResponse(err, name2addr)
 }
 
-func getEthAddrByID(w rest.ResponseWriter, r *rest.Request) {
+// clientid2Profile
+func clientid2Profile(w rest.ResponseWriter, r *rest.Request) {
 	var resp *APIResponse
 	defer func() {
 		fmt.Println(fmt.Sprintf("Restful Api Call ----> getEthAddrByID ,err=%s", resp.ToFormatString()))
 		writejson(w, resp)
 	}()
-	var req Name2EthAddrReponse
+	var req Name2ProfileReponse
 	err := r.DecodeJsonPayload(&req)
 	if err != nil {
 		rest.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	var cid = req.Name
-	name2addr, err := GetNodeEthByID(cid)
+
+	var cid = req.ID
+	name2addr, err := GetNodeProfile(cid)
 	resp = NewAPIResponse(err, name2addr)
 }
 
+//UpdateEthAddr
 func UpdateEthAddr(w rest.ResponseWriter, r *rest.Request) {
 	var resp *APIResponse
 	defer func() {
 		fmt.Println(fmt.Sprintf("Restful Api Call ----> getEthAddrByID ,err=%s", resp.ToFormatString()))
 		writejson(w, resp)
 	}()
-	var req Name2EthAddrReponse
-	err := r.DecodeJsonPayload(&req)
+	var req = &Name2ProfileReponse{}
+	err := r.DecodeJsonPayload(req)
 	if err != nil {
 		rest.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	var cid = req.Name
-	name2addr, err := GetNodeEthByID(cid)
-	resp = NewAPIResponse(err, name2addr)
-}
-
-func ApplyInviteCode(w rest.ResponseWriter, r *rest.Request) {
-	var resp *APIResponse
-	defer func() {
-		fmt.Println(fmt.Sprintf("Restful Api Call ----> ApplyInviteCode ,err=%s", resp.ToFormatString()))
-		writejson(w, resp)
-	}()
-
-	inviteCode, err := GetInviteCode()
-	resp = NewAPIResponse(err, inviteCode)
-}
-
-func GetLikes(w rest.ResponseWriter, r *rest.Request) {
-	var resp *APIResponse
-	defer func() {
-		fmt.Println(fmt.Sprintf("Restful Api Call ----> GetLikes ,err=%s", resp.ToFormatString()))
-		writejson(w, resp)
-	}()
-
-	name2addr, err := GetLikeSum()
-	resp = NewAPIResponse(err, name2addr)
-}
-
-func GetInviteCode() (invitecode string, err error) {
-	var args legacyinvites.CreateArguments
-	args.Uses = 1
-	//_,err = client.Source(longCtx, &invitecode, muxrpc.TypeString, muxrpc.Method{"invite", "create"}, args)
-	src, err := client.Source(longCtx, muxrpc.TypeString, muxrpc.Method{"invite", "create"}, args)
-	//src, err := client.Source(longCtx, muxrpc.TypeJSON, muxrpc.Method{"createLogStream"}, nil)
+	//req.Other1=eth address在客户端做合法性判断
+	_, err = likeDB.UpdateUserProfile(req.ID, req.Name, req.EthAddress)
 	if err != nil {
-		return "", err
+		rest.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
-	scode, err := src.Bytes()
-	invitecode = string(scode)
+
+	//和客户端建立一个奖励通道
+	err = ChannelDeal(req.EthAddress)
+	if err != nil {
+		fmt.Println(err)
+		resp = NewAPIResponse(fmt.Errorf("fail to create a channel to %s", req.EthAddress), nil)
+	}
+	resp = NewAPIResponse(err, "success")
+}
+
+// GetAllNodesProfile
+func GetAllNodesProfile() (datas []*Name2ProfileReponse, err error) {
+	profiles, err := likeDB.SelectUserProfile("")
+	if err != nil {
+		fmt.Println(fmt.Sprintf("Failed to db-SelectUserProfileAll", err))
+		return
+	}
+	datas = profiles
 	return
 }
 
-func GetLikeSum() (datas []*LasterNumLikes, err error) {
-	//err = ExecOnce()
-	time.Sleep(time.Second * 2)
+// GetNodeProfile
+func GetNodeProfile(cid string) (datas []*Name2ProfileReponse, err error) {
+	profile, err := likeDB.SelectUserProfile(cid)
 	if err != nil {
-		fmt.Println(fmt.Sprintf("exec log err : %s", err))
+		fmt.Println(fmt.Sprintf("Failed to db-SelectUserEthAddrAll", err))
 		return
 	}
-
-	for _, lk := range LikeCountMap {
-		d := &LasterNumLikes{
-			ClientID:         lk.ClientID,
-			ClientAddress:    lk.ClientAddress,
-			LasterAddVoteNum: lk.LasterAddVoteNum,
-			LasterVoteNum:    lk.LasterVoteNum,
-		}
-		datas = append(datas, d)
-		//todo
-		go ChannelDeal(lk.ClientAddress)
-	}
-	return datas, nil
-}
-
-func GetAllNodesEthAddress() (datas []*Name2EthAddrReponse, err error) {
-
-	ethadds, err := likeDB.SelectUserEthAddrAll()
-	if err != nil {
-		fmt.Println(fmt.Sprintf("Failed to SelectUserEthAddrAll", err))
-		return
-	}
-	for key, ethaddr := range ethadds {
-		d := &Name2EthAddrReponse{
-			Name:       key,
-			EthAddress: ethaddr,
-		}
-		datas = append(datas, d)
-		//todo
-		//go ChannelDeal(ethaddr)
-	}
-	return datas, nil
-}
-
-func GetNodeEthByID(cid string) (data *Name2EthAddrReponse, err error) {
-	ethadd, err := likeDB.SelectUserEthAddrById(cid)
-	if err != nil {
-		fmt.Println(fmt.Sprintf("Failed to SelectUserEthAddrAll", err))
-		return
-	}
-	data = &Name2EthAddrReponse{
-		Name:       cid,
-		EthAddress: ethadd,
-	}
-	fmt.Println(ethadd)
+	datas = profile
 	return
 }
 
-type Name2EthAddrReponse struct {
-	Name       string `json:"client_id"`
-	EthAddress string `json:"client_eth_address"`
-	Profile    string `json:"client_profile"`
+func GetAllLikes(w rest.ResponseWriter, r *rest.Request) {
+	var resp *APIResponse
+	defer func() {
+		fmt.Println(fmt.Sprintf("Restful Api Call ----> GetAllLikes ,err=%s", resp.ToFormatString()))
+		writejson(w, resp)
+	}()
+
+	likes, err := CalcGetLikeSum()
+
+	resp = NewAPIResponse(err, likes)
+}
+
+// GetAllNodesProfile
+func CalcGetLikeSum() (datas map[string]*LasterNumLikes, err error) {
+	likes, err := likeDB.SelectLikeSum("")
+	if err != nil {
+		fmt.Println(fmt.Sprintf("Failed to db-SelectUserProfile", err))
+		return
+	}
+	datas = likes
+	return
+}
+
+type Name2ProfileReponse struct {
+	ID         string `json:"client_id"`
+	Name       string `json:"client_Name"`
+	Alias      string `json:"client_alias"`
 	Bio        string `json:"client_bio"`
+	EthAddress string `json:"client_eth_address"`
 }
 
 func SsbMessageAnalysis(r *muxrpc.ByteSource) (int64, error) {
-
 	var buf = &bytes.Buffer{}
-
 	TempMsgMap = make(map[string]*TempdMessage)
-	Name2Hex = make(map[string]string)
-	LikeCountMap = make(map[string]*LasterNumLikes)
+	ClientID2Name = make(map[string]string)
 	LikeDetail = []string{}
 	UnLikeDetail = []string{}
 
-	for r.Next(context.TODO()) { // read/write loop for messages
+	//不能以最后一条消息的时间作为本轮计算的时间点,后期改为从服务器上取得pub的时间,
+	//计算周期越小越好,加载完本轮所有消息的时间点即为下一轮的开始时间，这样规避了在计算过程中有新消息被同步进入pub
+	//注意：manyvse等客户端向服务器同步数据，延迟时间不定，如果无网状态发送过来的消息被视为空
+	nowUnixTime := time.Now().UnixNano() / 1e6
 
+	for r.Next(context.TODO()) {
+		//在本轮for计算周期内如果有数据
 		buf.Reset()
 		err := r.Reader(func(r io.Reader) error {
 			_, err := buf.ReadFrom(r)
@@ -428,140 +383,111 @@ func SsbMessageAnalysis(r *muxrpc.ByteSource) (int64, error) {
 		}
 		continue*/
 
-		var msgStruct legacy.DeserializedMessage
-
+		var msgStruct DeserializedMessageStu
 		err = json.Unmarshal(buf.Bytes(), &msgStruct)
 		if err != nil {
 			fmt.Println(fmt.Sprintf("Muxrpc.ByteSource Unmarshal to json err =%s", err))
 			return 0, err
 		}
 
-		/*fmt.Println("******receive a message******")*/
-		/*fmt.Println(fmt.Sprintf("[message]previous\t:%v", msgStruct.Previous))
-		fmt.Println(fmt.Sprintf("[message]sequence\t:%v", msgStruct.Sequence))
-		fmt.Println(fmt.Sprintf("[message]author\t:%v", msgStruct.Author))
-		fmt.Println(fmt.Sprintf("[message]timestamp\t:%v", msgStruct.Timestamp))
-		fmt.Println(fmt.Sprintf("[message]hash\t:%v", msgStruct.Hash))*/
-
-		//1、记录本轮所有消息ID和author的关系
-		if msgStruct.Previous != nil { //这里需要过滤掉[根消息]Previous=null
-			TempMsgMap[fmt.Sprintf("%v", msgStruct.Previous)] = &TempdMessage{
-				Author: fmt.Sprintf("%v", msgStruct.Author),
-			}
+		//1、记录本轮所有消息ID和author的关系,保存下来,被点赞的消息基本不会在本轮被扫描到
+		msgkey := fmt.Sprintf("%v", msgStruct.Key)
+		msgauther := fmt.Sprintf("%v", msgStruct.Value.Author)
+		TempMsgMap[msgkey] = &TempdMessage{
+			Author: msgauther,
+		}
+		_, err = likeDB.InsertLikeDetail(msgkey, msgauther)
+		if err != nil {
+			fmt.Println(fmt.Sprintf("Failed to InsertLikeDetail", err))
+			return 0, err
 		}
 
 		//2、记录like的统计结果
-		contentJust := string(msgStruct.Content[0])
+		contentJust := string(msgStruct.Value.Content[0])
 		if contentJust == "{" {
 			//1、like的信息
 			cvs := ContentVoteStru{}
-			err = json.Unmarshal(msgStruct.Content, &cvs)
+			err = json.Unmarshal(msgStruct.Value.Content, &cvs)
 			if err == nil {
 				if string(cvs.Type) == "vote" {
-					/*fmt.Println(fmt.Sprintf("[vote]link :%v", cvs.Vote.Link))
-					fmt.Println(fmt.Sprintf("[vote]expression :%v", cvs.Vote.Expression))*/
-					//get the Like tag ,因为like肯定在发布message后,先记录被like的link，再找author
-					if string(cvs.Vote.Expression) != "️Unlike" { //1:❤️ 2:👍 3:✌️ 4:👍
+					/*if cvs.Vote.Expression != "️Unlike" { //1:❤️ 2:👍 3:✌️ 4:👍这种判断不知道什么是错误的：可以同时有点赞和取消点赞的判断
 						LikeDetail = append(LikeDetail, cvs.Vote.Link)
-					}
+						timesp := time.Unix(int64(msgStruct.Value.Timestamp)/1e3, 0).Format("2006-01-02 15:04:05")
+						fmt.Println("like-time:\t" + timesp + "MessageKey:\t" + cvs.Vote.Link)
+					}*/
 					//get the Unlike tag ,先记录被like的link，再找author；由于图谱深度不一样，按照时间顺序查询存在问题，则先统一记录
-					if string(cvs.Vote.Expression) == "Unlike" {
+					if cvs.Vote.Expression == "Unlike" {
 						UnLikeDetail = append(UnLikeDetail, cvs.Vote.Link)
+						timesp := time.Unix(int64(msgStruct.Value.Timestamp)/1e3, 0).Format("2006-01-02 15:04:05")
+						fmt.Println("unlike-time:\t" + timesp + "\tMessageKey:\t" + cvs.Vote.Link)
+					} else {
+						//get the Like tag ,因为like肯定在发布message后,先记录被like的link，再找author
+						LikeDetail = append(LikeDetail, cvs.Vote.Link)
+						timesp := time.Unix(int64(msgStruct.Value.Timestamp)/1e3, 0).Format("2006-01-02 15:04:05")
+						fmt.Println("like-time:\t" + timesp + "\tMessageKey:\t" + cvs.Vote.Link)
 					}
 				}
 			} else {
 				/*fmt.Println(fmt.Sprintf("Unmarshal for vote , err %v", err))*/
-				//todo 可以根据协议的扩展，记录其他的vote数据，目前没有这个需求
+				//todox 可以根据协议的扩展，记录其他的vote数据，目前没有这个需求
 			}
 
 			//3、about即修改备注名为hex-address的信息,注意:修改N次name,只需要返回最新的即可
+			//此为备份方案：认定Name为ethaddr,需要同步修改API，name字段代替other1
 			cau := ContentAboutStru{}
-			err = json.Unmarshal(msgStruct.Content, &cau)
+			err = json.Unmarshal(msgStruct.Value.Content, &cau)
 			if err == nil {
-				if string(cau.Type) == "about" {
-					/*fmt.Println(fmt.Sprintf("[about]about :%v", cau.About))
-					fmt.Println(fmt.Sprintf("[about]name :%v", cau.Name))*/
-					Name2Hex[fmt.Sprintf("%v", cau.About)] =
+				if cau.Type == "about" {
+					ClientID2Name[fmt.Sprintf("%v", cau.About)] =
 						fmt.Sprintf("%v", cau.Name)
-
 				}
 			} else {
 				fmt.Println(fmt.Sprintf("Unmarshal for about , err %v", err))
 			}
 		}
-
-		//记录客户端id和Address的绑定关系
-		/*fmt.Println(fmt.Sprintf("======>%v", msgStruct.Sequence))*/
 	}
-	// 编写LikeCount 被like的author收集到的点zan总数量
-	for _, likeLink := range LikeDetail { //被点赞的ID集合
-		author, ok := TempMsgMap[likeLink]
-		if ok {
-			_, ok := LikeCountMap[author.Author]
-			if !ok {
-				infos := LasterNumLikes{
-					ClientID:         author.Author,
-					ClientAddress:    "i do not know it's Eth Address",
-					LasterAddVoteNum: 1,
-					LasterVoteNum:    1,
-				}
-				LikeCountMap[author.Author] = &infos
-			} else {
-				LikeCountMap[author.Author].LasterAddVoteNum++
-				LikeCountMap[author.Author].LasterVoteNum++
-			}
 
-			hexStr, ok := Name2Hex[author.Author]
-			if ok {
-				LikeCountMap[author.Author].ClientAddress = hexStr
-			}
-			//fmt.Println("likelink:" + likeLink)
+	//save message-result to database
+	for _, likeLink := range LikeDetail { //被点赞的ID集合,标记被点赞的记录
+		_, err := likeDB.UpdateLikeDetail(1, nowUnixTime, likeLink)
+		if err != nil {
+			fmt.Println(fmt.Sprintf("Failed to UpdateLikeDetail", err))
+			return 0, err
 		}
-
 	}
 
 	for _, unLikeLink := range UnLikeDetail { //被取消点赞的ID集合
-		author, ok := TempMsgMap[unLikeLink]
-		if ok {
-			LikeCountMap[author.Author].LasterAddVoteNum--
-			LikeCountMap[author.Author].LasterVoteNum--
-			//fmt.Println("unlikelink:" + unLikeLink)
+		_, err := likeDB.UpdateLikeDetail(-1, nowUnixTime, unLikeLink)
+		if err != nil {
+			fmt.Println(fmt.Sprintf("Failed to UpdateLikeDetail", err))
+			return 0, err
 		}
 	}
 
-	//不能以最后一条消息的时间作为本轮计算的时间点,后期改为从服务器上取得pub的时间,
-	//计算周期越小越好,最大程度避免在统计中有新消息过来
-	//sava db
-	nowUnix := time.Now().Unix()
-	_, err := likeDB.UpdateLastScanTime(nowUnix)
+	_, err := likeDB.UpdateLastScanTime(nowUnixTime)
 	if err != nil {
 		fmt.Println(fmt.Sprintf("Failed to UpdateLastScanTime", err))
 		return 0, err
 	}
 	//更新table userethaddr
-	//save db
-	for key := range Name2Hex {
-		_, err := likeDB.UpdateUserEthAddr(key, Name2Hex[key])
+	for key := range ClientID2Name {
+		_, err := likeDB.UpdateUserProfile(key, ClientID2Name[key], "")
 		if err != nil {
 			fmt.Println(fmt.Sprintf("Failed to UpdateUserEthAddr", err))
 			return 0, err
 		}
 	}
-	/*//print for test
-	fmt.Println("本轮消息ID**********发布人")
-	for key := range TempMsgMap { //取map中的值
-		fmt.Println(key, "**********", TempMsgMap[key].Author)
-	}*/
-	fmt.Println("发布人ID**********以太坊地址")
-	for key := range Name2Hex { //取map中的值
-		fmt.Println(key, "**********", Name2Hex[key])
-	}
-	fmt.Println("计算出的点赞结果")
-	for key := range LikeCountMap { //取map中的值
-		fmt.Println(fmt.Sprintf("%s**********request test result:%v", key, LikeCountMap[key]))
-	}
+	fmt.Println(fmt.Sprintf("A round of message data analysis has been completed , message number= %v", len(TempMsgMap)))
 
-	return nowUnix, nil
+	/*//print for test
+	for key,value := range TempMsgMap {
+		fmt.Println(key, "<-this round message ID---ClientID->", value.Author)
+	}
+	for key := range ClientID2Name { //取map中的值
+		fmt.Println(key, "<-ClientID---Name->", ClientID2Name[key])
+	}*/
+
+	return nowUnixTime, nil
 }
 
 // LikeDetail 存储一轮搜索到的被Like的消息ID
@@ -573,11 +499,8 @@ var UnLikeDetail []string
 // LikeCount for save message for search likes's author
 var TempMsgMap map[string]*TempdMessage
 
-// Name2Hex for save message for search likes's author
-var Name2Hex map[string]string
-
-// LikeCount for api service link(eg:%vSK7+wJ7ceZNVUCkTQliXrhgfffr5njb5swTrEZLDiM=.sha256)
-var LikeCountMap map[string]*LasterNumLikes
+// ClientID2Name for save message for search likes's author clientid---name
+var ClientID2Name map[string]string
 
 // ContentVoteStru
 type ContentVoteStru struct {
@@ -599,17 +522,11 @@ type ContentAboutStru struct {
 }
 
 // LasterNumLikes
-// ClientID 客户端ID
-// ClientAddress 客户端执行的Hex address
-// VoteLink为被点赞的内容ID
-// LasterAddVoteNum 为新增的点赞数量
-// LasterAddVoteNum 收集到了总的点赞数量（如果发放奖励在先先，有取消点赞的，不收回奖励
 type LasterNumLikes struct {
 	ClientID         string `json:"client_id"`
-	ClientAddress    string `json:"client_eth_address"`
-	LasterAddVoteNum int64  `json:"laster_add_vote_num"`
-	LasterVoteNum    int64  `json:"laster_vote_num"`
-	//VoteLink         []string `json:"laster_add_vote_num"`
+	LasterLikeNum    int    `json:"laster_like_num"`
+	Name             string `json:"client_name"`
+	ClientEthAddress string `json:"client_eth_address"`
 }
 
 // TempdMessage 用于一次搜索的结果统计
@@ -617,12 +534,12 @@ type TempdMessage struct {
 	Author string `json:"author"`
 }
 
-//ChannelDeal
+// ChannelDeal
 func ChannelDeal(partnerAddress string) (err error) {
 	if len(partnerAddress) != 42 || partnerAddress[0:2] != "0x" {
 		err = fmt.Errorf("ETH ADDRESS error for " + partnerAddress)
 		return nil
-	} //todo address sum check
+	} //todox address sum check
 	photonNode := &PhotonNode{
 		Host:       "http://" + params.PhotonHost,
 		Address:    params.PhotonAddress,
@@ -634,19 +551,23 @@ func ChannelDeal(partnerAddress string) (err error) {
 		Address:    partnerAddress,
 		DebugCrash: false,
 	}
-	channel00 := photonNode.GetChannelWithBigInt(partnerNode, params.TokenAddress)
+	channel00, err := photonNode.GetChannelWithBigInt(partnerNode, params.TokenAddress)
+	if err != nil {
+		fmt.Println(fmt.Sprintf("[Pub-Client-ChannelDeal-ERROR]GetChannelWithBigInterr %s", err))
+		return
+	}
 	if channel00 == nil {
-		//create new channel 0.1smt
+		//create new channel with 0.1smt
 		err = photonNode.OpenChannelBigInt(partnerNode.Address, params.TokenAddress, new(big.Int).Mul(big.NewInt(params.Finney), big.NewInt(100)), params.SettleTime)
 		if err != nil {
-			fmt.Println(fmt.Sprintf("[Pub]create channel err %s", err))
+			fmt.Println(fmt.Sprintf("[Pub-Client-ChannelDeal-ERROR]create channel err %s", err))
 			return
 		}
-		fmt.Println(fmt.Sprintf("[Pub]create channel success ,with %s", partnerAddress))
+		fmt.Println(fmt.Sprintf("[Pub-Client-ChannelDeal-OK]create channel success ,with %s", partnerAddress))
 	} else {
-		fmt.Println(fmt.Sprintf("[Pub]channel has exist, with %s", partnerAddress))
+		fmt.Println(fmt.Sprintf("[Pub-Client-ChannelDeal-OK]channel has exist, with %s", partnerAddress))
 	}
 
-	//todo 主动检查补充余额
+	//todo 主动检查补充余额?不需要 注册了eth地址,肯定客户端处于在线状态
 	return
 }
