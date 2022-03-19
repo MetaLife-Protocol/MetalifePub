@@ -32,14 +32,14 @@ go install ./cmd/metalifeserver
 ```bash
     mkdir -p $HOME/.ssb-go
 ```
-2.create a file named secret and input the ssb-server's private key file,like this:
+2.create a file named 'secret' and input the ssb-server's private key file,like this:
 
 ```bash
 {
   "curve": "ed25519",
-  "public": "HZnU6wM+F17J0RSLXP05x3Lag2jGv3F3LzHMjh72coE=.ed25519",
-  "private": "6t1JnzJz0M4imTUUeoQuYdNnFPcZ56IwwRsjgQN1kMcdmdTrAz4XXsnRFItc/TnHctqDaMa/cXcvMcyOHvZygQ==.ed25519",
-  "id": "@HZnU6wM+F17J0RSLXP05x3Lag2jGv3F3LzHMjh72coE=.ed25519"
+  "public": "M2nU6wM+F17J0RSLXP05x3Lag8jGv3F3LzHMjh72coE=.ed25519",
+  "private": "6t1JnzJz0M4imTUUeoQuYdNnFPcZ78IwwRsjgQN1kMcdmdTrAz4XXsnRFItc/TnHcreDaMa/cXbtMcyOHvZygQ==.ed25519",
+  "id": "@M2nU6wM+F17J0RSLXP05x3Lag8jGv3F3LzHMjh72coE=.ed25519"
 }
 ```
 
@@ -79,14 +79,14 @@ Response e.g:
                 "client_id": "@C49GskstTGIrvYPqvTk+Vjyj23tD0wbCSkvX7A4zoHw=.ed25519",
                 "client_Name": "beefi",
                 "client_alias": "9527",
-                "client_bio": "CN",
+                "client_bio": "SG",
                 "client_eth_address": "0xce92bddda9de3806e4f4b55f47d20ea82973f2d7"
             },
             {
                 "client_id": "@eVs235wBX5aRoyUwWyZRbo9r1oZ9a7+V+wEvf+F/MCw=.ed25519",
                 "client_Name": "an-Pub1",
                 "client_alias": "",
-                "client_bio": "CN",
+                "client_bio": "SG",
                 "client_eth_address": ""
             }
         ]
@@ -114,7 +114,7 @@ Response e.g:
                 "client_id": "@C49GskstTGIrvYPqvTk+Vjyj23tD0wbCSkvX7A4zoHw=.ed25519",
                 "client_Name": "beefi",
                 "client_alias": "",
-                "client_bio": "CN",
+                "client_bio": "SG",
                 "client_eth_address": "0xce92bddda9de3806e4f4b55f47d20ea82973f2d7"
             }
         ]
