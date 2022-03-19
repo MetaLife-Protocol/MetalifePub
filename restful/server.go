@@ -87,7 +87,7 @@ func Start(ctx *cli.Context) {
 	listen := fmt.Sprintf("%s:%d", Config.Host, Config.Port)
 	server := &http.Server{Addr: listen, Handler: api.MakeHandler()}
 	go server.ListenAndServe()
-	fmt.Println(fmt.Sprintf("ssb restful api and message analysis service start...\n"))
+	fmt.Println(fmt.Sprintf("ssb restful api and message analysis service start...\nWelcome..."))
 
 	go DoMessageTask(ctx)
 

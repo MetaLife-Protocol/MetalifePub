@@ -16,11 +16,10 @@ The above configuration is the basic configuration, and the hardware configurati
 
  This version of Pub is written in Go. We recommend that users pre-install the latest version of Go. And further execute the following script to install pub.
 
-```go
+```bash
 git clone https://github.com/MetaLife-Foundation/MetalifePub
 cd MetalifePub 
-go install ./cmd/go-sbot
-go install ./cmd/sbotcli
+go install ./cmd/metalifeserver
 ```
 
    **Instruction**
@@ -30,38 +29,177 @@ go install ./cmd/sbotcli
  
 1.We need to manually create a folder **. ssb-go** on the user's home directory of the server.
 
-```go
+```bash
     mkdir -p $HOME/.ssb-go
 ```
+2.create a file named secret and input the ssb-server's private key file,like this:
 
-2.Run
-
-```go
-nohup go-sbot > ~/ssb/go-sbot.log &
-nohup sbotcli > ~/ssb/sbotcli.log &
+```bash
+{
+  "curve": "ed25519",
+  "public": "HZnU6wM+F17J0RSLXP05x3Lag2jGv3F3LzHMjh72coE=.ed25519",
+  "private": "6t1JnzJz0M4imTUUeoQuYdNnFPcZ56IwwRsjgQN1kMcdmdTrAz4XXsnRFItc/TnHctqDaMa/cXcvMcyOHvZygQ==.ed25519",
+  "id": "@HZnU6wM+F17J0RSLXP05x3Lag2jGv3F3LzHMjh72coE=.ed25519"
+}
 ```
 
-The running log will be saved in **server.log** and **sbotcli.log**.
+3.Run(The database will be automatically created after the program runs. The type is sqlite)
+
+```bash
+nohup sbotcli > log &
+```
+
+The running log will be saved in **log**.
+
+4.Some key operating parameters are located in /MetalifePub/restful/params/config.go
+
+```bash
+/MetalifePub/restful/params/config.go
+```
 
 ### Function Description
 
-**go-sbot**
-The pub server program ,which will provide client access and message log synchronization services that follow the ssb protocol.
-**sbotcli**
+**metalifeserver**
+The MetaLife server program ,which will provide client access and message log synchronization services that follow the ssb protocol.
 The pub message monitoring service provides:
 
-1.Get the eth address corresponding to the customer ID:
+1.Get all ssb-client information on a pub:
 
-```go
-GET http://{your server ip}:18008/ssb/api/node-address
+```bash
+GET http://{ssb-server-public-ip}:18008/ssb/api/node-info
+
+```
+Response e.g:
+```json
+	{
+        "error_code": 0,
+        "error_message": "SUCCESS",
+        "data": [
+            {
+                "client_id": "@C49GskstTGIrvYPqvTk+Vjyj23tD0wbCSkvX7A4zoHw=.ed25519",
+                "client_Name": "beefi",
+                "client_alias": "9527",
+                "client_bio": "CN",
+                "client_eth_address": "0xce92bddda9de3806e4f4b55f47d20ea82973f2d7"
+            },
+            {
+                "client_id": "@eVs235wBX5aRoyUwWyZRbo9r1oZ9a7+V+wEvf+F/MCw=.ed25519",
+                "client_Name": "an-Pub1",
+                "client_alias": "",
+                "client_bio": "CN",
+                "client_eth_address": ""
+            }
+        ]
+    }
 ```
 
-2.Get Like Statistics
-```go
-GET http://{your server ip}:18008/ssb/api/likes
+2.Get someone-ssb-client information on a pub:
+
+```bash
+GET http://{ssb-server-public-ip}:18008/ssb/api/node-info
+```
+Body:
+```json
+{
+    "client_id":"@C49GskstTGIrvYPqvTk+Vjyj23tD0wbCSkvX7A4zoHw=.ed25519"
+}
+```
+Response e.g:
+```json
+	{
+        "error_code": 0,
+        "error_message": "SUCCESS",
+        "data": [
+            {
+                "client_id": "@C49GskstTGIrvYPqvTk+Vjyj23tD0wbCSkvX7A4zoHw=.ed25519",
+                "client_Name": "beefi",
+                "client_alias": "",
+                "client_bio": "CN",
+                "client_eth_address": "0xce92bddda9de3806e4f4b55f47d20ea82973f2d7"
+            }
+        ]
+    }
+```
+
+3.The ssb-client register with metalifeserver the ETH address used to receive MetaLife's reward:
+
+
+```bash
+Post http://{ssb-server-public-ip}:18008/ssb/api/id2eth
+```
+Body:
+```json
+{
+    "client_id":"@C49GskstTGIrvYPqvTk+Vjyj23tD0wbCSkvX7A4zoHw=.ed25519",
+    "client_eth_address":"0xce92bddda9de3806e4f4b55f47d20ea82973f2d7"
+}
+```
+Response e.g:
+```json
+{
+    "error_code": 0,
+    "error_message": "SUCCESS",
+    "data": "success"
+}
+```
+
+4.Get 'Like' Statistics of all on pub
+
+```bash
+GET http://{ssb-server-public-ip}:18008/ssb/api/likes
+```
+Response e.g:
+```json
+	{
+        "error_code": 0,
+        "error_message": "SUCCESS",
+        "data": {
+            "@C49GskstTGIrvYPqvTk+Vjyj23tD0wbCSkvX7A4zoHw=.ed25519": {
+                "client_id": "@C49GskstTGIrvYPqvTk+Vjyj23tD0wbCSkvX7A4zoHw=.ed25519",
+                "laster_like_num": 7,
+                "client_name": "beefi",
+                "client_eth_address": "0xce92bddda9de3806e4f4b55f47d20ea82973f2d7"
+            },
+            "@eVs235wBX5aRoyUwWyZRbo9r1oZ9a7+V+wEvf+F/MCw=.ed25519": {
+                "client_id": "@eVs235wBX5aRoyUwWyZRbo9r1oZ9a7+V+wEvf+F/MCw=.ed25519",
+                "laster_like_num": 0,
+                "client_name": "an-Pub1",
+                "client_eth_address": ""
+            }
+        }
+    }
+```
+
+5.Get 'Like' Statistics of someone-ssb-client on pub
+
+
+```bash
+GET http://{ssb-server-public-ip}:18008/ssb/api/likes
+```
+Body:
+```json
+{
+    "client_id":"@C49GskstTGIrvYPqvTk+Vjyj23tD0wbCSkvX7A4zoHw=.ed25519"
+}
+```
+Response e.g:
+```json
+	{
+        "error_code": 0,
+        "error_message": "SUCCESS",
+        "data": {
+            "@C49GskstTGIrvYPqvTk+Vjyj23tD0wbCSkvX7A4zoHw=.ed25519": {
+                "client_id": "@C49GskstTGIrvYPqvTk+Vjyj23tD0wbCSkvX7A4zoHw=.ed25519",
+                "laster_like_num": 7,
+                "client_name": "beefi",
+                "client_eth_address": "0xce92bddda9de3806e4f4b55f47d20ea82973f2d7"
+            }
+        }
+    }
 ```
 
 3.Channel establishment and pre-deposit service  
+After receiving the ETH address registration message, the  MetaLife server will actively establish a channel with the client to obtain rewards , on Spectrum Main Chain.
 
 **Notice**Here is the spectrum ,TokenAddress=”0x6601F810eaF2fa749EEa10533Fd4CC23B8C791dc”
 
