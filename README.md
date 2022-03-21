@@ -1,10 +1,10 @@
-# Metalife Pub installation instructions and functional description
+# Metalife Server installation instructions and functional description
 
-  Metalife Pub is a P2P communication service built using the Scuttlebutt protocol. Its main purpose is to provide remote Peer node interactive connections and to collect like data that the authors publicly released in Pub ,which will report to super nodes for incentives. Since Pub is used as a node for Mediate Transfer, it is necessary to install the corresponding Photon node for payment functions at the same time. The following are installation instructions and related functional descriptions.
+  Metalife Server is a P2P communication service built using the Scuttlebutt protocol. Its main purpose is to provide remote Peer node interactive connections and to collect like data that the authors publicly released in Pub ,which will report to super nodes for incentives. Since Pub is used as a node for Mediate Transfer, it is necessary to install the corresponding Photon node for payment functions at the same time. The following are installation instructions and related functional descriptions.
 
-## Pub Installation  
+## Server Installation  
 
-### Pub system environment requirements
+### Server environment requirements
 
    Golang version 1.16.6 or higher
   
@@ -12,9 +12,9 @@
 
 The above configuration is the basic configuration, and the hardware configuration can be further upgraded for Pubs with storage requirements in the future.
 
-### Install the pub
+### Install the Server
 
- This version of Pub is written in Go. We recommend that users pre-install the latest version of Go. And further execute the following script to install pub.
+ This version of Server is written in Go. We recommend that users pre-install the latest version of Go. And further execute the following script to install Server.
 
 ```bash
 git clone https://github.com/MetaLife-Foundation/MetalifePub
@@ -23,7 +23,7 @@ go install ./cmd/metalifeserver
 ```
 
    **Instruction**
-    Just pull the code on the master branch. This branch supports ebt-mutlifromat by default. It should be noted that a photon node needs to be run on the server where Pub is installed, and please enter the parameter configuration file **/restful/params/config.go**. The parameter of PhotonAddress(in line 46)  need to be replaced by the address of the photon node running on the same machine (this account needs to ensure that the number of SMT is sufficient, the pub node will automatically establish the channel with each connected client account, and deposit 0.1smt to the channel)
+    Just pull the code on the master branch. This branch supports ebt-mutlifromat by default. It should be noted that a photon node needs to be run on the server where Server is installed, and please enter the parameter configuration file **/restful/params/config.go**. The parameter of PhotonAddress(in line 46)  need to be replaced by the address of the photon node running on the same machine (this account needs to ensure that the number of SMT is sufficient, the pub node will automatically establish the channel with each connected client account, and deposit 0.1smt to the channel)
 
  **Make sure the  go-sbot and sbotcli are in the $PATH**
  
