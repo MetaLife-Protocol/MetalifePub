@@ -299,10 +299,10 @@ func (pdb *PubDB) SelectLikeSum(clientid string) (likesum map[string]*LasterNumL
 		var onemsglikes int
 		var cname string
 		var ethaddr string
-
-		err = rows.Scan(&cid, &onemsglikes, &cname, &ethaddr)
-		if err != nil {
-			return nil, err
+		errnil := rows.Scan(&cid, &onemsglikes, &cname, &ethaddr)
+		if errnil != nil {
+			continue
+			//return nil, err
 		}
 		var l *LasterNumLikes
 		l = &LasterNumLikes{

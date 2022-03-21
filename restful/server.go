@@ -66,7 +66,11 @@ func Start(ctx *cli.Context) {
 	}
 	api.Use(rest.DefaultDevStack...)
 	router, err := rest.MakeRouter(
+		//likes of all client
 		rest.Get("/ssb/api/likes", GetAllLikes),
+
+		//likes of someone client
+		rest.Post("/ssb/api/likes", GetSomeoneLike),
 
 		//get all 'about' message,e.g:'about'='eth address'
 		rest.Get("/ssb/api/node-info", clientid2Profiles),
@@ -323,6 +327,7 @@ func GetNodeProfile(cid string) (datas []*Name2ProfileReponse, err error) {
 	return
 }
 
+// GetAllLikes
 func GetAllLikes(w rest.ResponseWriter, r *rest.Request) {
 	var resp *APIResponse
 	defer func() {
@@ -330,16 +335,35 @@ func GetAllLikes(w rest.ResponseWriter, r *rest.Request) {
 		writejson(w, resp)
 	}()
 
-	likes, err := CalcGetLikeSum()
+	likes, err := CalcGetLikeSum("")
 
 	resp = NewAPIResponse(err, likes)
 }
 
-// GetAllNodesProfile
-func CalcGetLikeSum() (datas map[string]*LasterNumLikes, err error) {
-	likes, err := likeDB.SelectLikeSum("")
+// GetSomeoneLike
+func GetSomeoneLike(w rest.ResponseWriter, r *rest.Request) {
+	var resp *APIResponse
+	defer func() {
+		fmt.Println(fmt.Sprintf("Restful Api Call ----> GetSomeoneLike ,err=%s", resp.ToFormatString()))
+		writejson(w, resp)
+	}()
+	var req Name2ProfileReponse
+	err := r.DecodeJsonPayload(&req)
 	if err != nil {
-		fmt.Println(fmt.Sprintf("Failed to db-SelectUserProfile", err))
+		rest.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	var cid = req.ID
+	like, err := CalcGetLikeSum(cid)
+	resp = NewAPIResponse(err, like)
+}
+
+// GetAllNodesProfile
+func CalcGetLikeSum(someoneOrAll string) (datas map[string]*LasterNumLikes, err error) {
+	likes, err := likeDB.SelectLikeSum(someoneOrAll)
+	if err != nil {
+		fmt.Println(fmt.Sprintf("Failed to db-SelectLikeSum", err))
 		return
 	}
 	datas = likes

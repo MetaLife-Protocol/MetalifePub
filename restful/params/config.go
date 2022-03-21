@@ -19,7 +19,7 @@ type LasterNumLikes struct {
 func NewApiServeConfig() *ApiConfig {
 	return &ApiConfig{
 		"0.0.0.0",
-		18008,
+		10008,
 		true,
 	}
 
