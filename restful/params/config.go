@@ -45,7 +45,7 @@ const (
 	Douglas  = 1e42
 )
 
-var PhotonHost = "127.0.0.1:15001"
+var PhotonHost = "127.0.0.1:11001"
 
 var PhotonAddress = "0x0D0EFCcda4f079C0dD1B728297A43eE54d7170Cd"
 
