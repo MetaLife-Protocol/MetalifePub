@@ -245,42 +245,6 @@ func (pdb *PubDB) UpdateLikeDetail(liketag int, ts int64, msgid string) (affecti
 	return
 }
 
-/*//SelectLastScanTime
-func (pdb *PubDB) SelectLikeSum1(clientid string) (likesum []*LasterNumLikes, err error) {//map[string]*LasterNumLikes
-	var rows *sql.Rows
-	if clientid == "" {
-		rows, err = pdb.db.Query("SELECT likedetail.author,likedetail.thismsglikesum,userprofile.clientname,userprofile.other1 FROM likedetail left outer join userprofile on likedetail.author=userprofile.clientid")
-	} else {
-		rows, err = pdb.db.Query("SELECT likedetail.author,likedetail.thismsglikesum,userprofile.clientname,userprofile.other1 FROM likedetail left outer join userprofile on likedetail.author=userprofile.clientid where likedetail.author=?", clientid)
-	}
-	if err != nil {
-		return nil, err
-	}
-	likes := []*LasterNumLikes{}
-	defer rows.Close()
-	for rows.Next() {
-		var cid string
-		var onemsglikes int
-		var cname string
-		var ethaddr string
-
-		err = rows.Scan(&cid, &onemsglikes, &cname, &ethaddr)
-		if err != nil {
-			return nil, err
-		}
-		var l *LasterNumLikes
-		l = &LasterNumLikes{
-			ClientID:         cid,
-			LasterLikeNum:    onemsglikes,
-			Name:             cname,
-			ClientEthAddress: ethaddr,
-		}
-
-		likes = append(likes, l)
-	}
-	likesum = likes
-	return
-}*/
 //SelectLastScanTime
 func (pdb *PubDB) SelectLikeSum(clientid string) (likesum map[string]*LasterNumLikes, err error) { ////LikeCountMap = make(map[string]*LasterNumLikes)
 	var rows *sql.Rows
