@@ -19,7 +19,7 @@ type LasterNumLikes struct {
 func NewApiServeConfig() *ApiConfig {
 	return &ApiConfig{
 		"0.0.0.0",
-		10008,
+		ServePort,
 		true,
 	}
 
@@ -47,11 +47,13 @@ const (
 
 var PhotonHost = "127.0.0.1:11001"
 
-var PhotonAddress = "0x0D0EFCcda4f079C0dD1B728297A43eE54d7170Cd"
+var PhotonAddress = "0xBaBaeafB77585472531D3E8E6f3C3bCF4c04cBE4"
 
 var TokenAddress = "0x6601F810eaF2fa749EEa10533Fd4CC23B8C791dc"
 
 var SettleTime = 40000
+
+var ServePort = 10008
 
 // MsgScanInterval 消息二轮扫描的时间间隔
 var MsgScanInterval = time.Second * 15

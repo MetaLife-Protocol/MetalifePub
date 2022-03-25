@@ -78,6 +78,12 @@ var app = cli.App{
 		&cli.StringFlag{Name: "addr", Value: params.PubTcpHostAddress, Usage: "tcp address of the sbot to connect to (or listen on)"},
 		&cli.StringFlag{Name: "remoteKey", Value: "", Usage: "the remote pubkey you are connecting to (by default the local key)"},
 		&dataDir,
+		&cli.StringFlag{Name: "token-address", Value: "0x6601F810eaF2fa749EEa10533Fd4CC23B8C791dc", Usage: "which token is used in metalife app,if set,the default will be replaced"},
+		&cli.StringFlag{Name: "photon-host", Value: "127.0.0.1:11001", Usage: "host:port link to the photon service."},
+		&cli.StringFlag{Name: "pub-eth-address", Usage: "The ethereum address the pub 's address is bound for reward."},
+		&cli.IntFlag{Name: "settle-timeout", Value: 40000, Usage: "set settle timeout on photon."},
+		&cli.IntFlag{Name: "service-port", Value: 10008, Usage: "port' for the metalife service to listen on."},
+		&cli.IntFlag{Name: "message-scan-interval", Value: 60, Usage: "the time interval at which messages are scanned and calculated,unit:second."},
 		&keyFileFlag,
 		&unixSockFlag,
 		&cli.BoolFlag{Name: "verbose,vv", Usage: "print muxrpc packets"},
@@ -140,6 +146,43 @@ func todo(ctx *cli.Context) error {
 }
 
 func initClient(ctx *cli.Context) error {
+	//init usr config
+	tokenaddressStr := ctx.String("token-address")
+	if tokenaddressStr == "" {
+		return fmt.Errorf("Program startup parameters [token-address] must be set")
+	}
+	params.TokenAddress = tokenaddressStr
+
+	apihost, apiport, err := net.SplitHostPort(ctx.String("photon-host"))
+	if err != nil {
+		return err
+	}
+	params.PhotonHost = apihost + ":" + apiport
+
+	pubethaddressStr := ctx.String("pub-eth-address")
+	if len(pubethaddressStr) != 42 || pubethaddressStr[0:2] != "0x" {
+		return fmt.Errorf("Program startup parameters [pub-eth-address] must be set")
+	}
+	params.PhotonAddress = pubethaddressStr
+
+	settletimeoutInt := ctx.Int("settle-timeout")
+	if settletimeoutInt <= 0 {
+		return fmt.Errorf("settle timeout should > 0")
+	}
+	params.SettleTime = settletimeoutInt
+
+	serveportInt := ctx.Int("service-port")
+	if serveportInt <= 0 {
+		return fmt.Errorf("service-port %v error", serveportInt)
+	}
+	params.ServePort = serveportInt
+
+	messagescanintervalInt := ctx.Int("message-scan-interval")
+	if messagescanintervalInt <= 0 {
+		return fmt.Errorf("service-port %v error", messagescanintervalInt)
+	}
+	params.MsgScanInterval = time.Second * time.Duration(messagescanintervalInt)
+
 	dstr := ctx.String("timeout")
 	if dstr != "" {
 		d, err := time.ParseDuration(dstr)

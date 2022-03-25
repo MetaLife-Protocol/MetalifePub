@@ -91,17 +91,19 @@ func Start(ctx *cli.Context) {
 	listen := fmt.Sprintf("%s:%d", Config.Host, Config.Port)
 	server := &http.Server{Addr: listen, Handler: api.MakeHandler()}
 	go server.ListenAndServe()
-	fmt.Println(fmt.Sprintf("ssb restful api and message analysis service start...\nWelcome..."))
+	fmt.Println(fmt.Sprintf(printTime + "ssb restful api and message analysis service start...\nWelcome..."))
 
 	go DoMessageTask(ctx)
 
 	<-quitSignal
 	err = server.Shutdown(context.Background())
 	if err != nil {
-		fmt.Println(fmt.Sprintf("API restful service Shutdown err : %s", err))
+		fmt.Println(fmt.Sprintf(printTime+"API restful service Shutdown err : %s", err))
 	}
 
 }
+
+var printTime = time.Now().Format("2006-01-02 15:04:05") + " "
 
 // newClient creat a client link to ssb-server
 func newClient(ctx *cli.Context) (*ssbClient.Client, error) {
@@ -153,7 +155,7 @@ func newTCPClient(ctx *cli.Context) (*ssbClient.Client, error) {
 		return nil, fmt.Errorf("Init: failed to connect to %s: %w", shsAddr.String(), err)
 	}
 
-	fmt.Println(fmt.Sprintf("Client = [%s] , method = [%s] , linked pub server = [%s]", "connected", "[TCP]", shsAddr.String()))
+	fmt.Println(fmt.Sprintf(printTime+"Client = [%s] , method = [%s] , linked pub server = [%s]", "connected", "[TCP]", shsAddr.String()))
 
 	return client, nil
 }
@@ -216,10 +218,10 @@ func DoMessageTask(ctx *cli.Context) {
 		src, err := client.Source(longCtx, muxrpc.TypeJSON, muxrpc.Method{"createLogStream"}, args)
 		if err != nil {
 			//client可能失效,则需要重建新的连接,链接资源的释放在ssb-server端
-			fmt.Println(fmt.Sprintf("Source stream call failed: %w ,will try other tcp connect socket...", err))
+			fmt.Println(fmt.Sprintf(printTime+"Source stream call failed: %w ,will try other tcp connect socket...", err))
 			otherClient, err := newClient(ctx)
 			if err != nil {
-				fmt.Println(fmt.Sprintf("Try set up a ssb client tcp socket failed , will try again...", err))
+				fmt.Println(fmt.Sprintf(printTime+"Try set up a ssb client tcp socket failed , will try again...", err))
 				time.Sleep(time.Second * 10)
 				continue
 			}
@@ -232,11 +234,11 @@ func DoMessageTask(ctx *cli.Context) {
 		time.Sleep(time.Second)
 		calcComplateTime, err := SsbMessageAnalysis(src)
 		if err != nil {
-			fmt.Println(fmt.Sprintf("Message pump failed: %w", err))
+			fmt.Println(fmt.Sprintf(printTime+"Message pump failed: %w", err))
 			time.Sleep(time.Second * 5)
 			continue
 		}
-		fmt.Println(fmt.Sprintf("A round of message data analysis has been completed , from TimeSanmp[%v] to [%v]", lastAnalysisTimesnamp, calcComplateTime))
+		fmt.Println(fmt.Sprintf(printTime+"A round of message data analysis has been completed , from TimeSanmp[%v] to [%v]", lastAnalysisTimesnamp, calcComplateTime))
 		lastAnalysisTimesnamp = calcComplateTime
 
 		time.Sleep(params.MsgScanInterval)
@@ -309,7 +311,7 @@ func UpdateEthAddr(w rest.ResponseWriter, r *rest.Request) {
 func GetAllNodesProfile() (datas []*Name2ProfileReponse, err error) {
 	profiles, err := likeDB.SelectUserProfile("")
 	if err != nil {
-		fmt.Println(fmt.Sprintf("Failed to db-SelectUserProfileAll", err))
+		fmt.Println(fmt.Sprintf(printTime+"Failed to db-SelectUserProfileAll", err))
 		return
 	}
 	datas = profiles
@@ -320,7 +322,7 @@ func GetAllNodesProfile() (datas []*Name2ProfileReponse, err error) {
 func GetNodeProfile(cid string) (datas []*Name2ProfileReponse, err error) {
 	profile, err := likeDB.SelectUserProfile(cid)
 	if err != nil {
-		fmt.Println(fmt.Sprintf("Failed to db-SelectUserEthAddrAll", err))
+		fmt.Println(fmt.Sprintf(printTime+"Failed to db-SelectUserEthAddrAll", err))
 		return
 	}
 	datas = profile
@@ -422,7 +424,7 @@ func SsbMessageAnalysis(r *muxrpc.ByteSource) (int64, error) {
 		}
 		_, err = likeDB.InsertLikeDetail(msgkey, msgauther)
 		if err != nil {
-			fmt.Println(fmt.Sprintf("Failed to InsertLikeDetail", err))
+			fmt.Println(fmt.Sprintf(printTime+"Failed to InsertLikeDetail", err))
 			return 0, err
 		}
 
@@ -443,12 +445,12 @@ func SsbMessageAnalysis(r *muxrpc.ByteSource) (int64, error) {
 					if cvs.Vote.Expression == "Unlike" {
 						UnLikeDetail = append(UnLikeDetail, cvs.Vote.Link)
 						timesp := time.Unix(int64(msgStruct.Value.Timestamp)/1e3, 0).Format("2006-01-02 15:04:05")
-						fmt.Println("unlike-time:\t" + timesp + "\tMessageKey:\t" + cvs.Vote.Link)
+						fmt.Println(printTime + "unlike-time:\t" + timesp + "\tMessageKey:\t" + cvs.Vote.Link)
 					} else {
 						//get the Like tag ,因为like肯定在发布message后,先记录被like的link，再找author
 						LikeDetail = append(LikeDetail, cvs.Vote.Link)
 						timesp := time.Unix(int64(msgStruct.Value.Timestamp)/1e3, 0).Format("2006-01-02 15:04:05")
-						fmt.Println("like-time:\t" + timesp + "\tMessageKey:\t" + cvs.Vote.Link)
+						fmt.Println(printTime + "like-time:\t" + timesp + "\tMessageKey:\t" + cvs.Vote.Link)
 					}
 				}
 			} else {
@@ -466,7 +468,7 @@ func SsbMessageAnalysis(r *muxrpc.ByteSource) (int64, error) {
 						fmt.Sprintf("%v", cau.Name)
 				}
 			} else {
-				fmt.Println(fmt.Sprintf("Unmarshal for about , err %v", err))
+				fmt.Println(fmt.Sprintf(printTime+"Unmarshal for about , err %v", err))
 			}
 		}
 	}
@@ -475,7 +477,7 @@ func SsbMessageAnalysis(r *muxrpc.ByteSource) (int64, error) {
 	for _, likeLink := range LikeDetail { //被点赞的ID集合,标记被点赞的记录
 		_, err := likeDB.UpdateLikeDetail(1, nowUnixTime, likeLink)
 		if err != nil {
-			fmt.Println(fmt.Sprintf("Failed to UpdateLikeDetail", err))
+			fmt.Println(fmt.Sprintf(printTime+"Failed to UpdateLikeDetail", err))
 			return 0, err
 		}
 	}
@@ -483,25 +485,25 @@ func SsbMessageAnalysis(r *muxrpc.ByteSource) (int64, error) {
 	for _, unLikeLink := range UnLikeDetail { //被取消点赞的ID集合
 		_, err := likeDB.UpdateLikeDetail(-1, nowUnixTime, unLikeLink)
 		if err != nil {
-			fmt.Println(fmt.Sprintf("Failed to UpdateLikeDetail", err))
+			fmt.Println(fmt.Sprintf(printTime+"Failed to UpdateLikeDetail", err))
 			return 0, err
 		}
 	}
 
 	_, err := likeDB.UpdateLastScanTime(nowUnixTime)
 	if err != nil {
-		fmt.Println(fmt.Sprintf("Failed to UpdateLastScanTime", err))
+		fmt.Println(fmt.Sprintf(printTime+"Failed to UpdateLastScanTime", err))
 		return 0, err
 	}
 	//更新table userethaddr
 	for key := range ClientID2Name {
 		_, err := likeDB.UpdateUserProfile(key, ClientID2Name[key], "")
 		if err != nil {
-			fmt.Println(fmt.Sprintf("Failed to UpdateUserEthAddr", err))
+			fmt.Println(fmt.Sprintf(printTime+"Failed to UpdateUserEthAddr", err))
 			return 0, err
 		}
 	}
-	fmt.Println(fmt.Sprintf("A round of message data analysis has been completed , message number= %v", len(TempMsgMap)))
+	fmt.Println(fmt.Sprintf(printTime+"A round of message data analysis has been completed , message number= %v", len(TempMsgMap)))
 
 	/*//print for test
 	for key,value := range TempMsgMap {
@@ -577,19 +579,19 @@ func ChannelDeal(partnerAddress string) (err error) {
 	}
 	channel00, err := photonNode.GetChannelWithBigInt(partnerNode, params.TokenAddress)
 	if err != nil {
-		fmt.Println(fmt.Sprintf("[Pub-Client-ChannelDeal-ERROR]GetChannelWithBigInterr %s", err))
+		fmt.Println(fmt.Sprintf(printTime+"[Pub-Client-ChannelDeal-ERROR]GetChannelWithBigInterr %s", err))
 		return
 	}
 	if channel00 == nil {
 		//create new channel with 0.1smt
 		err = photonNode.OpenChannelBigInt(partnerNode.Address, params.TokenAddress, new(big.Int).Mul(big.NewInt(params.Finney), big.NewInt(100)), params.SettleTime)
 		if err != nil {
-			fmt.Println(fmt.Sprintf("[Pub-Client-ChannelDeal-ERROR]create channel err %s", err))
+			fmt.Println(fmt.Sprintf(printTime+"[Pub-Client-ChannelDeal-ERROR]create channel err %s", err))
 			return
 		}
-		fmt.Println(fmt.Sprintf("[Pub-Client-ChannelDeal-OK]create channel success ,with %s", partnerAddress))
+		fmt.Println(fmt.Sprintf(printTime+"[Pub-Client-ChannelDeal-OK]create channel success ,with %s", partnerAddress))
 	} else {
-		fmt.Println(fmt.Sprintf("[Pub-Client-ChannelDeal-OK]channel has exist, with %s", partnerAddress))
+		fmt.Println(fmt.Sprintf(printTime+"[Pub-Client-ChannelDeal-OK]channel has exist, with %s", partnerAddress))
 	}
 
 	//todo 主动检查补充余额?不需要 注册了eth地址,肯定客户端处于在线状态
