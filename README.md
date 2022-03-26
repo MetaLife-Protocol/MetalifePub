@@ -19,6 +19,7 @@ The above configuration is the basic configuration, and the hardware configurati
 ```bash
 git clone https://github.com/MetaLife-Foundation/MetalifePub
 cd MetalifePub 
+export GO111MODULE=on
 go install ./cmd/metalifeserver
 ```
 
@@ -41,12 +42,34 @@ go install ./cmd/metalifeserver
   "private": "6t1JnzJz0M4imTUUeoQuYdNnFPcZ78IwwRsjgQN1kMcdmdTrAz4XXsnRFItc/TnHcreDaMa/cXbtMcyOHvZygQ==.ed25519",
   "id": "@M2nU6wM+F17J0RSLXP05x3Lag8jGv3F3LzHMjh72coE=.ed25519"
 }
+chmod +600 ./secret
+
 ```
 
 3.Run(The database will be automatically created after the program runs. The type is sqlite)
 
 ```bash
-nohup sbotcli > log &
+#see: 
+# metalifeserver --help
+#   --pub-eth-address value        The ethereum address the pub 's address is bound for reward.
+#   --addr value                   tcp address of the sbot to connect to (or listen on) (default: "54.179.3.93:8008")
+#   --remoteKey value              the remote pubkey you are connecting to (by default the local key)
+#   --datadir value                directory for storing pub's parsing data (default: "/home/ubuntu/.ssb-go/pubdata")
+#   --token-address value          which token is used in metalife app,if set,the default will be replaced (default: "0x6601F810eaF2fa749EEa10533Fd4CC23B8C791dc")
+#   --photon-host value            host:port link to the photon service. (default: "127.0.0.1:11001")
+#   --settle-timeout value         set settle timeout on photon. (default: 40000)
+#   --service-port value           port' for the metalife service to listen on. (default: 10008)
+#   --message-scan-interval value  the time interval at which messages are scanned and calculated,unit:second. (default: 60)
+
+nohup metalifeserver \
+ --pub-eth-address 0xBaBaeafB77585472531D3E8E6f3C3bCF4c04cBE4 \
+ --addr 127.0.0.1:8008 \
+ --token-address 0x6601F810eaF2fa749EEa10533Fd4CC23B8C791dc \
+ --photon-host 127.0.0.1:11001 \
+ --settle-timeout 40000 \
+ --service-port 10008 \
+ --message-scan-interval 60 \
+ > log &
 ```
 
 The running log will be saved in **log**.
@@ -122,7 +145,7 @@ Response e.g:
 ```
 
 3.The ssb-client register with metalifeserver the ETH address used to receive MetaLife's reward:
-
+(This call is synchronous. It may take a few seconds to return the request result. Pub will establish an Photon Channel  with this client_eth_address)
 
 ```bash
 Post http://{ssb-server-public-ip}:18008/ssb/api/id2eth

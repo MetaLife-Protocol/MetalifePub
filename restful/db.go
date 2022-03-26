@@ -3,14 +3,15 @@ package restful
 import (
 	"database/sql"
 	_ "github.com/mattn/go-sqlite3"
+	"sync"
 )
 
 // PubDB init
 type PubDB struct {
-	db *sql.DB
-	/*lock                    sync.Mutex
-	mlock                   sync.Mutex
-	Name                    string*/
+	db    *sql.DB
+	lock  sync.Mutex
+	mlock sync.Mutex
+	Name  string
 }
 
 func OpenPubDB(pubDataSource string) (DB *PubDB, err error) {

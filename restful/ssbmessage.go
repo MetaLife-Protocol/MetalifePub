@@ -3,6 +3,7 @@ package restful
 import (
 	"encoding/json"
 	"go.mindeco.de/ssb-refs"
+	"time"
 )
 
 type MessageValue struct {
@@ -19,4 +20,61 @@ type DeserializedMessageStu struct {
 	Key       string        `json:"key"`
 	Value     *MessageValue `json:"value"`
 	Timestamp float64       `json:"timestamp"`
+}
+
+// LikeDetail 存储一轮搜索到的被Like的消息ID
+var LikeDetail []string
+
+// LikeDetail 存储一轮搜索到的被Unlike的消息ID
+var UnLikeDetail []string
+
+// LikeCount for save message for search likes's author
+var TempMsgMap map[string]*TempdMessage
+
+// ClientID2Name for save message for search likes's author clientid---name
+var ClientID2Name map[string]string
+
+func PrintTime() string {
+	return "[" + time.Now().Format("2006-01-02 15:04:05") + "] "
+}
+
+// ContentVoteStru
+type ContentVoteStru struct {
+	Type string    `json:"type"`
+	Vote *VoteStru `json:"vote"`
+}
+
+//VoteStru
+type VoteStru struct {
+	Link       string `json:"link"`
+	value      int    `json:"value"`
+	Expression string `json:"expression"`
+}
+
+type ContentAboutStru struct {
+	Type  string `json:"type"`
+	About string `json:"about"`
+	Name  string `json:"name"`
+}
+
+// LasterNumLikes
+type LasterNumLikes struct {
+	ClientID         string `json:"client_id"`
+	LasterLikeNum    int    `json:"laster_like_num"`
+	Name             string `json:"client_name"`
+	ClientEthAddress string `json:"client_eth_address"`
+}
+
+// TempdMessage 用于一次搜索的结果统计
+type TempdMessage struct {
+	Author string `json:"author"`
+}
+
+// Name2ProfileReponse
+type Name2ProfileReponse struct {
+	ID         string `json:"client_id"`
+	Name       string `json:"client_Name"`
+	Alias      string `json:"client_alias"`
+	Bio        string `json:"client_bio"`
+	EthAddress string `json:"client_eth_address"`
 }
