@@ -66,6 +66,9 @@ func Start(ctx *cli.Context) {
 	}
 	api.Use(rest.DefaultDevStack...)
 	router, err := rest.MakeRouter(
+		//pub's whoami
+		rest.Get("/ssb/api/pub-whoami", GetPubWhoami),
+
 		//likes of all client
 		rest.Get("/ssb/api/likes", GetAllLikes),
 
@@ -152,7 +155,10 @@ func newTCPClient(ctx *cli.Context) (*ssbClient.Client, error) {
 		return nil, fmt.Errorf("Init: failed to connect to %s: %w", shsAddr.String(), err)
 	}
 
-	fmt.Println(fmt.Sprintf(PrintTime()+"Client = [%s] , method = [%s] , linked pub server = [%s]", "connected", "[TCP]", shsAddr.String()))
+	fmt.Println(fmt.Sprintf(PrintTime()+"Client = [%s] , method = [%s] , linked pub server = [%s]", "connected", "TCP", shsAddr.String()))
+	//127.0.0.1:8008|@HZnU6wM+F17J0RSLXP05x3Lag2jGv3F3LzHMjh72coE=.ed25519
+	params.PubID = strings.Split(shsAddr.String(), "|")[1]
+	fmt.Println(fmt.Sprintf(PrintTime()+"Init: success to work on pub [%s]", params.PubID))
 
 	return client, nil
 }
@@ -235,30 +241,51 @@ func DoMessageTask(ctx *cli.Context) {
 			time.Sleep(time.Second * 5)
 			continue
 		}
-		fmt.Println(fmt.Sprintf(PrintTime()+"A round of message data analysis has been completed ,from TimeSanmp [%v] to [%v]", lastAnalysisTimesnamp, calcComplateTime))
+
+		var calcsumthisTurn = len(TempMsgMap)
+		fmt.Println(fmt.Sprintf(PrintTime()+"A round of message data analysis has been completed ,from TimeSanmp [%v] to [%v] ,message number = [%d]", lastAnalysisTimesnamp, calcComplateTime, calcsumthisTurn))
 		lastAnalysisTimesnamp = calcComplateTime
+
+		//检查pub 与 所有metalife内已注册eth地址的账户的通道余额，按规定补充
+		checkPubChannelBalance()
 
 		time.Sleep(params.MsgScanInterval)
 	}
+}
+
+// GetPubWhoami
+func GetPubWhoami(w rest.ResponseWriter, r *rest.Request) {
+	var resp *APIResponse
+	defer func() {
+		fmt.Println(fmt.Sprintf("Restful Api Call ----> GetPubWhoami ,err=%s", resp.ToFormatString()))
+		writejson(w, resp)
+	}()
+
+	pinfo := &Whoami{}
+	pinfo.Pub_Id = params.PubID
+	pinfo.Pub_Eth_Address = params.PhotonAddress
+	resp = NewAPIResponse(nil, pinfo)
+	return
 }
 
 // clientid2Profile
 func clientid2Profiles(w rest.ResponseWriter, r *rest.Request) {
 	var resp *APIResponse
 	defer func() {
-		fmt.Println(fmt.Sprintf("Restful Api Call ----> clientid2Profile ,err=%s", resp.ToFormatString()))
+		fmt.Println(fmt.Sprintf("Restful Api Call ----> node-infos ,err=%s", resp.ToFormatString()))
 		writejson(w, resp)
 	}()
 
 	name2addr, err := GetAllNodesProfile()
 	resp = NewAPIResponse(err, name2addr)
+	return
 }
 
 // clientid2Profile
 func clientid2Profile(w rest.ResponseWriter, r *rest.Request) {
 	var resp *APIResponse
 	defer func() {
-		fmt.Println(fmt.Sprintf("Restful Api Call ----> getEthAddrByID ,err=%s", resp.ToFormatString()))
+		fmt.Println(fmt.Sprintf("Restful Api Call ----> node-info ,err=%s", resp.ToFormatString()))
 		writejson(w, resp)
 	}()
 	var req Name2ProfileReponse
@@ -277,7 +304,7 @@ func clientid2Profile(w rest.ResponseWriter, r *rest.Request) {
 func UpdateEthAddr(w rest.ResponseWriter, r *rest.Request) {
 	var resp *APIResponse
 	defer func() {
-		fmt.Println(fmt.Sprintf("Restful Api Call ----> getEthAddrByID ,err=%s", resp.ToFormatString()))
+		fmt.Println(fmt.Sprintf("Restful Api Call ----> UpdateEthAddr ,err=%s", resp.ToFormatString()))
 		writejson(w, resp)
 	}()
 	var req = &Name2ProfileReponse{}
@@ -286,7 +313,12 @@ func UpdateEthAddr(w rest.ResponseWriter, r *rest.Request) {
 		rest.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	//req.Other1=eth address在客户端做合法性判断
+
+	_, err = HexToAddress(req.EthAddress)
+	if err != nil {
+		resp = NewAPIResponse(err, nil)
+		return
+	}
 	_, err = likeDB.UpdateUserProfile(req.ID, req.Name, req.EthAddress)
 	if err != nil {
 		rest.Error(w, err.Error(), http.StatusInternalServerError)
@@ -296,8 +328,8 @@ func UpdateEthAddr(w rest.ResponseWriter, r *rest.Request) {
 	//和客户端建立一个奖励通道
 	err = ChannelDeal(req.EthAddress)
 	if err != nil {
-		fmt.Println(err)
-		resp = NewAPIResponse(fmt.Errorf("fail to create a channel to %s", req.EthAddress), nil)
+		resp = NewAPIResponse(fmt.Errorf("fail to create a channel to %s, because %s", req.EthAddress, err), nil)
+		return
 	}
 	resp = NewAPIResponse(err, "success")
 }
@@ -490,7 +522,7 @@ func SsbMessageAnalysis(r *muxrpc.ByteSource) (int64, error) {
 			return 0, err
 		}
 	}
-	fmt.Println(fmt.Sprintf(PrintTime()+"A round of message data analysis has been completed ,message number = [%v]", len(TempMsgMap)))
+	//fmt.Println(fmt.Sprintf(PrintTime()+"A round of message data analysis has been completed ,message number = [%v]", len(TempMsgMap)))
 
 	/*//print for test
 	for key,value := range TempMsgMap {
@@ -505,10 +537,6 @@ func SsbMessageAnalysis(r *muxrpc.ByteSource) (int64, error) {
 
 // ChannelDeal
 func ChannelDeal(partnerAddress string) (err error) {
-	if len(partnerAddress) != 42 || partnerAddress[0:2] != "0x" {
-		err = fmt.Errorf("ETH ADDRESS error for " + partnerAddress)
-		return nil
-	} //todox address sum check
 	photonNode := &PhotonNode{
 		Host:       "http://" + params.PhotonHost,
 		Address:    params.PhotonAddress,
@@ -537,6 +565,44 @@ func ChannelDeal(partnerAddress string) (err error) {
 		fmt.Println(fmt.Sprintf(PrintTime()+"[Pub-Client-ChannelDeal-OK]channel has exist, with %s", partnerAddress))
 	}
 
-	//todo 主动检查补充余额?不需要 注册了eth地址,肯定客户端处于在线状态
+	return
+}
+
+func checkPubChannelBalance() (err error) {
+	name2addr, err := GetAllNodesProfile()
+	for _, info := range name2addr {
+		clientaddrStr := info.EthAddress
+		_, err = HexToAddress(clientaddrStr)
+		if err != nil {
+			err = fmt.Errorf("[Pub-CheckPubChannelBalance]clientid [%v] error=%s", info.ID, err)
+			return
+		}
+		pubNode := &PhotonNode{
+			Host:       "http://" + params.PhotonHost,
+			Address:    params.PhotonAddress,
+			APIAddress: params.PhotonHost,
+			DebugCrash: false,
+		}
+		channelX, err := pubNode.GetChannelWithBigInt(
+			&PhotonNode{Address: clientaddrStr, DebugCrash: false},
+			params.TokenAddress)
+		if err != nil || channelX == nil {
+			err = fmt.Errorf("[Pub-CheckPubChannelBalance]between pub %v and %v client,there has no channel,so no work todo", params.PhotonAddress, clientaddrStr)
+			continue
+		}
+		var minNum = new(big.Int).Mul(big.NewInt(params.Ether), big.NewInt(int64(params.MinBalanceInchannel)))
+		var nowNum = channelX.Balance
+		var diffNum = new(big.Int).Sub(minNum, nowNum)
+		if minNum.Cmp(nowNum) == 1 {
+			//补充至MinBalanceInchannel
+			err0 := pubNode.Deposit(clientaddrStr, params.TokenAddress, diffNum, params.SettleTime)
+			if err0 != nil {
+				err = fmt.Errorf("[Pub-CheckPubChannelBalance]between pub %v and %v client,Deposit to channel err=", params.PhotonAddress, clientaddrStr, err0)
+				continue
+			}
+			fmt.Println(fmt.Sprintf(PrintTime()+"[Pub-CheckPubChannelBalance]between pub %v and %v client,Deposit to channel success, num=%v", params.PhotonAddress, clientaddrStr, err0, diffNum))
+		}
+		time.Sleep(time.Second)
+	}
 	return
 }

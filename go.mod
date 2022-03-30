@@ -57,4 +57,5 @@ require (
 	gonum.org/v1/gonum v0.0.0-20190904110519-2065cbd6b42a
 	gopkg.in/urfave/cli.v2 v2.0.0-20190806201727-b62605953717
 	modernc.org/kv v1.0.3
+	github.com/ethereum/go-ethereum v1.8.17
 )

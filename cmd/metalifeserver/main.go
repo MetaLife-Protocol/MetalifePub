@@ -80,10 +80,11 @@ var app = cli.App{
 		&dataDir,
 		&cli.StringFlag{Name: "token-address", Value: "0x6601F810eaF2fa749EEa10533Fd4CC23B8C791dc", Usage: "which token is used in metalife app,if set,the default will be replaced"},
 		&cli.StringFlag{Name: "photon-host", Value: "127.0.0.1:11001", Usage: "host:port link to the photon service."},
-		&cli.StringFlag{Name: "pub-eth-address", Usage: "The ethereum address the pub 's address is bound for reward."},
+		&cli.StringFlag{Name: "pub-eth-address", Usage: "ethereum address the pub 's address is bound for reward."},
 		&cli.IntFlag{Name: "settle-timeout", Value: 40000, Usage: "set settle timeout on photon."},
 		&cli.IntFlag{Name: "service-port", Value: 10008, Usage: "port' for the metalife service to listen on."},
 		&cli.IntFlag{Name: "message-scan-interval", Value: 60, Usage: "the time interval at which messages are scanned and calculated,unit:second."},
+		&cli.IntFlag{Name: "min-balance-inchannel", Value: 1, Usage: "minimum balance in photon channel between this pub and ssb client."},
 		&keyFileFlag,
 		&unixSockFlag,
 		&cli.BoolFlag{Name: "verbose,vv", Usage: "print muxrpc packets"},
@@ -182,6 +183,12 @@ func initClient(ctx *cli.Context) error {
 		return fmt.Errorf("service-port %v error", messagescanintervalInt)
 	}
 	params.MsgScanInterval = time.Second * time.Duration(messagescanintervalInt)
+
+	minbalance := ctx.Int("min-balance-inchannel")
+	if messagescanintervalInt <= 0 {
+		return fmt.Errorf("min-balance-inchannel %v error", messagescanintervalInt)
+	}
+	params.MinBalanceInchannel = minbalance
 
 	dstr := ctx.String("timeout")
 	if dstr != "" {

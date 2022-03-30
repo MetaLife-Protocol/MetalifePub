@@ -57,3 +57,9 @@ var ServePort = 10008
 
 // MsgScanInterval 消息二轮扫描的时间间隔
 var MsgScanInterval = time.Second * 15
+
+// minBalanceInchannel pub与客户端通道的最小资金，保障三方转账余额足够
+var MinBalanceInchannel = 1
+
+//
+var PubID = ""

@@ -112,7 +112,7 @@ func (node *PhotonNode) OpenChannelBigInt(partnerAddress, tokenAddress string, b
 		fmt.Println(fmt.Sprintf("[Pub]OpenChannelApi err %s", err))
 		return err
 	}
-	fmt.Println(fmt.Sprintf("[Pub][Pub]OpenChannelApi returned %s", string(body)))
+	fmt.Println(fmt.Sprintf("[Pub]OpenChannelApi returned %s", string(body)))
 	ch := channel.ChannelDataDetail{}
 	err = json.Unmarshal(body, &ch)
 	if err != nil {

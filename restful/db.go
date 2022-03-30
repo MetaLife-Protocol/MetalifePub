@@ -3,6 +3,7 @@ package restful
 import (
 	"database/sql"
 	_ "github.com/mattn/go-sqlite3"
+	"go.cryptoscope.co/ssb/restful/params"
 	"sync"
 )
 
@@ -275,6 +276,7 @@ func (pdb *PubDB) SelectLikeSum(clientid string) (likesum map[string]*LasterNumL
 			LasterLikeNum:    onemsglikes,
 			Name:             cname,
 			ClientEthAddress: ethaddr,
+			MessageFromPub:   params.PubID,
 		}
 		if _, ok := likeCountMap[cid]; ok {
 			likeCountMap[cid].LasterLikeNum += onemsglikes

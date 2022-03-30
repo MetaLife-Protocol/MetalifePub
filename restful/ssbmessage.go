@@ -63,6 +63,7 @@ type LasterNumLikes struct {
 	LasterLikeNum    int    `json:"laster_like_num"`
 	Name             string `json:"client_name"`
 	ClientEthAddress string `json:"client_eth_address"`
+	MessageFromPub   string `json:"message_from_pub"`
 }
 
 // TempdMessage 用于一次搜索的结果统计
@@ -77,4 +78,10 @@ type Name2ProfileReponse struct {
 	Alias      string `json:"client_alias"`
 	Bio        string `json:"client_bio"`
 	EthAddress string `json:"client_eth_address"`
+}
+
+//Whoami
+type Whoami struct {
+	Pub_Id          string `json:"pub_id"`
+	Pub_Eth_Address string `json:"pub_eth_address"`
 }
