@@ -181,13 +181,15 @@ Response e.g:
                 "client_id": "@C49GskstTGIrvYPqvTk+Vjyj23tD0wbCSkvX7A4zoHw=.ed25519",
                 "laster_like_num": 7,
                 "client_name": "beefi",
-                "client_eth_address": "0xce92bddda9de3806e4f4b55f47d20ea82973f2d7"
+                "client_eth_address": "0xce92bddda9de3806e4f4b55f47d20ea82973f2d7",
+                "message_from_pub": "@HZnU6wM+F17J0RSLXP05x3Lag2jGv3F3LzHMjh72coE=.ed25519"
             },
             "@eVs235wBX5aRoyUwWyZRbo9r1oZ9a7+V+wEvf+F/MCw=.ed25519": {
                 "client_id": "@eVs235wBX5aRoyUwWyZRbo9r1oZ9a7+V+wEvf+F/MCw=.ed25519",
                 "laster_like_num": 0,
                 "client_name": "an-Pub1",
-                "client_eth_address": ""
+                "client_eth_address": "",
+                "message_from_pub": "@HZnU6wM+F17J0RSLXP05x3Lag2jGv3F3LzHMjh72coE=.ed25519"
             }
         }
     }
@@ -215,8 +217,26 @@ Response e.g:
                 "client_id": "@C49GskstTGIrvYPqvTk+Vjyj23tD0wbCSkvX7A4zoHw=.ed25519",
                 "laster_like_num": 7,
                 "client_name": "beefi",
-                "client_eth_address": "0xce92bddda9de3806e4f4b55f47d20ea82973f2d7"
+                "client_eth_address": "0xce92bddda9de3806e4f4b55f47d20ea82973f2d7",
+                "message_from_pub": "@HZnU6wM+F17J0RSLXP05x3Lag2jGv3F3LzHMjh72coE=.ed25519"
             }
+        }
+    }
+```
+6.Get 'Like' Statistics of someone-ssb-client on pub
+
+
+```bash
+GET http://{ssb-server-public-ip}:18008/ssb/api/pub-whoami
+```
+Response e.g:
+```json
+{
+        "error_code": 0,
+        "error_message": "SUCCESS",
+        "data": {
+            "pub_id": "@HZnU6wM+F17J0RSLXP05x3Lag2jGv3F3LzHMjh72coE=.ed25519",
+            "pub_eth_address": "0xb05Feb81fB4BF6d8B2eB5A5Ae883BAA9E7530cB7"
         }
     }
 ```
