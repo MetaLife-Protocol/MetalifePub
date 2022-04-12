@@ -84,7 +84,7 @@ var app = cli.App{
 		&cli.IntFlag{Name: "settle-timeout", Value: 40000, Usage: "set settle timeout on photon."},
 		&cli.IntFlag{Name: "service-port", Value: 10008, Usage: "port' for the metalife service to listen on."},
 		&cli.IntFlag{Name: "message-scan-interval", Value: 60, Usage: "the time interval at which messages are scanned and calculated,unit:second."},
-		&cli.IntFlag{Name: "min-balance-inchannel", Value: 1, Usage: "minimum balance in photon channel between this pub and ssb client."},
+		&cli.IntFlag{Name: "min-balance-inchannel", Value: 1, Usage: "minimum balance in photon channel between this pub and ssb client, unit:1e18 wei."},
 		&keyFileFlag,
 		&unixSockFlag,
 		&cli.BoolFlag{Name: "verbose,vv", Usage: "print muxrpc packets"},

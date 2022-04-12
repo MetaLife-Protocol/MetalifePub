@@ -44,6 +44,18 @@ type ContentVoteStru struct {
 	Vote *VoteStru `json:"vote"`
 }
 
+// TippedOff reasons:"xxx|xxx|xxx"
+type TippedOffStu struct {
+	Plaintiff  string `json:"plaintiff"`
+	Defendant  string `json:"defendant"`
+	MessageKey string `json:"messagekey"`
+	Reasons    string `json:"reasons"`
+	DealTag    string `json:"dealtag"`
+	Recordtime int64  `json:"recordtime"`
+	Dealtime   int64  `json:"dealtime"`
+	Dealreward string `json:"dealreward"`
+}
+
 //VoteStru
 type VoteStru struct {
 	Link       string `json:"link"`

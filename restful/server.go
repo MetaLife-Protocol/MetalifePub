@@ -83,6 +83,15 @@ func Start(ctx *cli.Context) {
 
 		//register client's eth address to it's ID
 		rest.Post("/ssb/api/id2eth", UpdateEthAddr),
+
+		// tipped someone off 举报
+		rest.Post("/ssb/api/tippedwhooff", TippedOff),
+
+		//tipped off infomation 所有举报的信息汇总
+		rest.Get("/ssb/api/tippedoff-info", GetTippedOffInfo),
+
+		//tipped off infomation 对举报的信息进行处理，认证，如属实，则对该账号进行黑名单处理，永久unfollow
+		rest.Post("/ssb/api/tippedoff-deal", DealTippedOff),
 	)
 	if err != nil {
 		level.Error(log).Log("make router err", err)
@@ -103,6 +112,92 @@ func Start(ctx *cli.Context) {
 	if err != nil {
 		fmt.Println(fmt.Sprintf(PrintTime()+"API restful service Shutdown err : %s", err))
 	}
+}
+
+// TippedOff
+func TippedOff(w rest.ResponseWriter, r *rest.Request) {
+	var resp *APIResponse
+	defer func() {
+		fmt.Println(fmt.Sprintf("Restful Api Call ----> TippedWhoOff ,err=%s", resp.ToFormatString()))
+		writejson(w, resp)
+	}()
+	var req TippedOffStu
+	err := r.DecodeJsonPayload(&req)
+	if err != nil {
+		rest.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	var plaintiff = req.Plaintiff
+	var defendant = req.Defendant
+	var mkey = req.MessageKey
+	var reasons = req.Reasons
+
+	var recordtime = time.Now().UnixNano() / 1e6
+	lstid, err := likeDB.InsertViolation(recordtime, plaintiff, defendant, mkey, reasons)
+	if err != nil {
+		rest.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if lstid == -1 {
+		resp = NewAPIResponse(err, "You've already reported it, thank your again👍")
+	}
+
+	resp = NewAPIResponse(err, "Success, the pub administrator will verify as soon as possible, thank you for your report👍")
+}
+
+// TippedOffInfo get infos
+func GetTippedOffInfo(w rest.ResponseWriter, r *rest.Request) {
+	var resp *APIResponse
+	defer func() {
+		fmt.Println(fmt.Sprintf("Restful Api Call ----> GetTippedOffInfo ,err=%s", resp.ToFormatString()))
+		writejson(w, resp)
+	}()
+	var req TippedOffStu
+	err := r.DecodeJsonPayload(&req)
+	if err != nil {
+		rest.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	datas, err := likeDB.SelectViolationByWhere(req.Plaintiff, req.Defendant, req.MessageKey, req.Reasons, req.DealTag)
+
+	resp = NewAPIResponse(err, datas)
+}
+
+// DealTippedOff
+func DealTippedOff(w rest.ResponseWriter, r *rest.Request) {
+	var resp *APIResponse
+	defer func() {
+		fmt.Println(fmt.Sprintf("Restful Api Call ----> DealTippedOff ,err=%s", resp.ToFormatString()))
+		writejson(w, resp)
+	}()
+	var req TippedOffStu
+	err := r.DecodeJsonPayload(&req)
+	if err != nil {
+		rest.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	var dtime = time.Now().UnixNano() / 1e6
+	_, err = likeDB.UpdateViolation(req.DealTag, dtime, req.Dealreward, req.Plaintiff, req.Defendant, req.MessageKey)
+	if err != nil {
+		rest.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if req.DealTag == "1" {
+		//unfollow 'the defendant'
+		//todo award 'the plaintiff'-因为pub不处理奖励的事情，且举报和处理这个过程不涉及到有消息，故处理办法为：
+		/*_, err := likeDB.UpdateLikeDetail(1000, dtime, req.MessageKey)
+		if err != nil {
+			fmt.Println(fmt.Sprintf(PrintTime()+"Failed to UpdateLikeDetail", err))
+			return 0, err
+		}*/
+		err = contactSomeone(nil, req.Defendant, false, true)
+		if err != nil {
+			resp = NewAPIResponse(err, fmt.Sprintf("Remove %s failed", req.Defendant))
+		}
+	}
+	resp = NewAPIResponse(err, "success")
 }
 
 // newClient creat a client link to ssb-server
@@ -251,6 +346,26 @@ func DoMessageTask(ctx *cli.Context) {
 
 		time.Sleep(params.MsgScanInterval)
 	}
+}
+
+func contactSomeone(ctx *cli.Context, dealwho string, isfollow, isblock bool) (err error) {
+	arg := map[string]interface{}{
+		"contact":   dealwho,
+		"type":      "contact",
+		"following": isfollow,
+		"blocking":  isblock,
+	}
+	var v string
+	err = client.Async(longCtx, &v, muxrpc.TypeString, muxrpc.Method{"publish"}, arg)
+	if err != nil {
+		return fmt.Errorf("publish call failed: %w", err)
+	}
+	/*newMsg, err := refs.ParseMessageRef(v)
+	if err != nil {
+		return err
+	}*/
+	//log.Log("event", "published", "type", "contact", "ref", newMsg.String())
+	return
 }
 
 // GetPubWhoami
@@ -473,7 +588,7 @@ func SsbMessageAnalysis(r *muxrpc.ByteSource) (int64, error) {
 					}
 				}
 			} else {
-				/*fmt.Println(fmt.Sprintf("Unmarshal for vote , err %v", err))*/
+				/*fmt.Println(fmt.Sprintf("Unmarshal  for vote , err %v", err))*/
 				//todox 可以根据协议的扩展，记录其他的vote数据，目前没有这个需求
 			}
 

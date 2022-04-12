@@ -43,6 +43,17 @@ CREATE TABLE IF NOT EXISTS "likedetail" (
    "thismsglikesum" int NULL default 0,
    "liketime" INTEGER NULL default 0
 );
+CREATE TABLE IF NOT EXISTS "violationrecord" (
+   "uid" INTEGER PRIMARY KEY AUTOINCREMENT,
+   "recordtime" INTEGER NULL
+   "plaintiff" TEXT NULL,
+   "defendant" TEXT NULL,
+   "messagekey" TEXT NULL,
+   "reasons" TEXT NULL,
+   "dealtag" bit NULL DEFAULT '0',
+   "dealtime" INTEGER NULL,
+   "dealreward" TEXT NULL default ''
+);
    `
 	_, err = db.Exec(sql_table)
 	if err != nil {
@@ -51,7 +62,9 @@ CREATE TABLE IF NOT EXISTS "likedetail" (
 	return &PubDB{db: db}, nil
 }
 
-//InsertDataCalcTime
+//for table violationrecord, dealtag=0举报 =1属实 =2事实不清，不予处理
+
+//InsertDataCalcTime  Violation record
 func (pdb *PubDB) InsertLastScanTime(ts int64) (lastid int64, err error) {
 	stmt, err := pdb.db.Prepare("INSERT INTO pubmsgscan(lastscantime) VALUES (?)")
 	if err != nil {
@@ -285,5 +298,119 @@ func (pdb *PubDB) SelectLikeSum(clientid string) (likesum map[string]*LasterNumL
 		}
 	}
 	likesum = likeCountMap
+	return
+}
+
+//InsertViolation  Violation record
+func (pdb *PubDB) InsertViolation(recordtime int64, plaintiff, defendant, messagekey, reason string) (lastid int64, err error) {
+	xnum, err := pdb.CountViolationByWhere(plaintiff, defendant, messagekey)
+	if err != nil {
+		return 0, err
+	}
+	if xnum != 0 {
+		return -1, err
+	}
+
+	stmt, err := pdb.db.Prepare("INSERT INTO violationrecord(recordtime,plaintiff,defendant,messagekey,reasons) VALUES (?,?,?,?,?)")
+	if err != nil {
+		return 0, err
+	}
+	res, err := stmt.Exec(recordtime, plaintiff, defendant, messagekey, reason)
+	if err != nil {
+		return 0, err
+	}
+	lastid, err = res.LastInsertId()
+
+	return
+}
+
+func (pdb *PubDB) UpdateViolation(dealtag string, dealtime int64, dealreward, plaintiff, defendant, messagekey string) (affectid int64, err error) {
+	stmt, err := pdb.db.Prepare("update violationrecord set dealtag=?,dealtime=?,dealreward=? where plaintiff=? and defendant=? and messagekey=?")
+	if err != nil {
+		return 0, err
+	}
+	res, err := stmt.Exec(dealtag, dealtime, dealreward, plaintiff, defendant, messagekey)
+	if err != nil {
+		return 0, err
+	}
+	affectid, err = res.LastInsertId()
+	return
+}
+
+//CountViolationByWhere
+func (pdb *PubDB) CountViolationByWhere(lplaintiff, defendant, messagekey string) (num int, err error) {
+	rows, err := pdb.db.Query("SELECT count(*) FROM violationrecord where plaintiff=? and defendant=? and messagekey=?", lplaintiff, defendant, messagekey)
+	if err != nil {
+		return 0, err
+	}
+	num = 0
+	defer rows.Close()
+	for rows.Next() {
+		var count int
+		err = rows.Scan(&count)
+		if err != nil {
+			return 0, err
+		}
+		num = count
+		break
+	}
+	return
+}
+
+//SelectLastScanTime
+func (pdb *PubDB) SelectViolationByWhere(plaintiff, defendant, messagekey, reasons, dealtag string) (num []*TippedOffStu, err error) {
+	sqlstr := "SELECT * FROM violationrecord"
+	if plaintiff != "" || defendant != "" || messagekey != "" || reasons != "" || dealtag != "" {
+		sqlstr += "where uid!=-1"
+		if plaintiff != "" {
+			sqlstr += " and plaintiff='" + plaintiff + "'"
+		}
+		if defendant != "" {
+			sqlstr += " and defendant='" + defendant + "'"
+		}
+		if messagekey != "" {
+			sqlstr += " and messagekey='" + messagekey + "'"
+		}
+		if reasons != "" {
+			sqlstr += " and reasons='" + reasons + "'"
+		}
+		if dealtag != "" {
+			sqlstr += " and dealtag='" + dealtag + "'"
+		}
+	}
+	rows, err := pdb.db.Query(sqlstr)
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+	for rows.Next() {
+		var xuid int64
+		var xplaintiff string
+		var xdefendant string
+		var xmessageKey string
+		var xreasons string
+		var xdealTag string
+		var xrecordtime int64
+		var xdealtime int64
+		var xdealreward string
+		errnil := rows.Scan(&xuid, &xrecordtime, &xplaintiff, &xdefendant, &xmessageKey, &xreasons, &xdealTag, &xdealtime, &xdealreward)
+		if errnil != nil {
+			continue
+			//return nil, err
+		}
+		var l *TippedOffStu
+		l = &TippedOffStu{
+			Plaintiff:  xplaintiff,
+			Defendant:  xdefendant,
+			MessageKey: xmessageKey,
+			Reasons:    xreasons,
+			DealTag:    xdealTag,
+			Recordtime: xrecordtime,
+			Dealtime:   xdealtime,
+			Dealreward: xdealreward,
+		}
+		num = append(num, l)
+	}
 	return
 }
