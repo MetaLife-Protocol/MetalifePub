@@ -83,8 +83,9 @@ var app = cli.App{
 		&cli.StringFlag{Name: "pub-eth-address", Usage: "ethereum address the pub 's address is bound for reward."},
 		&cli.IntFlag{Name: "settle-timeout", Value: 40000, Usage: "set settle timeout on photon."},
 		&cli.IntFlag{Name: "service-port", Value: 10008, Usage: "port' for the metalife service to listen on."},
-		&cli.IntFlag{Name: "message-scan-interval", Value: 60, Usage: "the time interval at which messages are scanned and calculated,unit:second."},
-		&cli.IntFlag{Name: "min-balance-inchannel", Value: 1, Usage: "minimum balance in photon channel between this pub and ssb client, unit:1e18 wei."},
+		&cli.IntFlag{Name: "message-scan-interval", Value: 60, Usage: "the time interval at which messages are scanned and calculated (unit:second)."},
+		&cli.IntFlag{Name: "min-balance-inchannel", Value: 1, Usage: "minimum balance in photon channel between this pub and ssb client (unit: 1e18 wei)."},
+		&cli.IntFlag{Name: "report-rewarding", Value: 1, Usage: "pub will reward the person who provides the report (if the report is true). (unit: 1e18 wei)"},
 		&keyFileFlag,
 		&unixSockFlag,
 		&cli.BoolFlag{Name: "verbose,vv", Usage: "print muxrpc packets"},
@@ -185,10 +186,16 @@ func initClient(ctx *cli.Context) error {
 	params.MsgScanInterval = time.Second * time.Duration(messagescanintervalInt)
 
 	minbalance := ctx.Int("min-balance-inchannel")
-	if messagescanintervalInt <= 0 {
-		return fmt.Errorf("min-balance-inchannel %v error", messagescanintervalInt)
+	if minbalance <= 0 {
+		return fmt.Errorf("min-balance-inchannel %v error", minbalance)
 	}
 	params.MinBalanceInchannel = minbalance
+
+	reportrewarding := ctx.Int("report-rewarding")
+	if reportrewarding < 0 {
+		return fmt.Errorf("report-rewarding %v error", reportrewarding)
+	}
+	params.ReportRewarding = reportrewarding
 
 	dstr := ctx.String("timeout")
 	if dstr != "" {

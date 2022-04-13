@@ -85,7 +85,7 @@ func Start(ctx *cli.Context) {
 		rest.Post("/ssb/api/id2eth", UpdateEthAddr),
 
 		// tipped someone off 举报
-		rest.Post("/ssb/api/tippedwhooff", TippedOff),
+		rest.Post("/ssb/api/tipped-who-off", TippedOff),
 
 		//tipped off infomation 所有举报的信息汇总
 		rest.Get("/ssb/api/tippedoff-info", GetTippedOffInfo),
@@ -141,6 +141,7 @@ func TippedOff(w rest.ResponseWriter, r *rest.Request) {
 	}
 	if lstid == -1 {
 		resp = NewAPIResponse(err, "You've already reported it, thank your again👍")
+		return
 	}
 
 	resp = NewAPIResponse(err, "Success, the pub administrator will verify as soon as possible, thank you for your report👍")
@@ -184,18 +185,18 @@ func DealTippedOff(w rest.ResponseWriter, r *rest.Request) {
 		rest.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if req.DealTag == "1" {
-		//unfollow 'the defendant'
-		//todo award 'the plaintiff'-因为pub不处理奖励的事情，且举报和处理这个过程不涉及到有消息，故处理办法为：
-		/*_, err := likeDB.UpdateLikeDetail(1000, dtime, req.MessageKey)
-		if err != nil {
-			fmt.Println(fmt.Sprintf(PrintTime()+"Failed to UpdateLikeDetail", err))
-			return 0, err
-		}*/
+	if req.DealTag == "1" { ////for table violationrecord, dealtag=0举报 =1属实 =2事实不清,不予处理
+		//1 unfollow and block 'the defendant' and sign him to blacklist
 		err = contactSomeone(nil, req.Defendant, false, true)
 		if err != nil {
-			resp = NewAPIResponse(err, fmt.Sprintf("Remove %s failed", req.Defendant))
+			resp = NewAPIResponse(err, fmt.Sprintf("Unfollow and block %s failed", req.Defendant))
 		}
+		fmt.Println(fmt.Sprintf(PrintTime()+"Success to Unfollow and block %s", req.Defendant))
+
+		//2 pub给‘the plaintiff’发token(举报不属于消息,其实质是为了pub的良好环境,所以pub来给plaintiff发token是应该的)
+		//这个工作交由另一个线程去处理（还要持续unfollow and block the defendant）
+		resp = NewAPIResponse(err, fmt.Sprintf("success, [%s] has been block by [pub administrator], and pub will award token to [%s]", req.Defendant, req.Plaintiff))
+		return
 	}
 	resp = NewAPIResponse(err, "success")
 }

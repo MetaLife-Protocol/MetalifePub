@@ -223,8 +223,8 @@ Response e.g:
         }
     }
 ```
-6.Get 'Like' Statistics of someone-ssb-client on pub
 
+6.Get pub's profile
 
 ```bash
 GET http://{ssb-server-public-ip}:18008/ssb/api/pub-whoami
@@ -239,6 +239,86 @@ Response e.g:
             "pub_eth_address": "0xb05Feb81fB4BF6d8B2eB5A5Ae883BAA9E7530cB7"
         }
     }
+```
+
+7.The ssb-client post a message tip-off to pub administrator
+
+```bash
+POST http://{ssb-server-public-ip}:18008/ssb/api/tipped-who-off
+```
+Body:
+```json
+{
+    "plaintiff":"@C49GskstTGIrvYPqvTk+Vjyj23tD0wbCSkvX7A4zoHw=.ed25519",  
+    "defendant":"@Sg5b3BjZH8XWyJ7mGpH3txrDJmIQtSGxV6MbH6CgeCw=.ed25519",  
+    "messagekey":"%w5S3q0eVkTzcfpIKdIR3tJueFTMIOQP1lwcsQkhWSMs=.sha256",   
+    "reasons":"sex"                            
+}
+```
+Response e.g:
+```json
+{
+    "error_code": 0,
+    "error_message": "SUCCESS",
+    "data": "Success, the pub administrator will verify as soon as possible, thank you for your report👍"
+}
+```
+
+8.Get all message about tip-off, the pub administrator will use this information, this is a combination query
+
+```bash
+POST http://{ssb-server-public-ip}:18008/ssb/api/tippedoff-info
+```
+Body:
+```json
+{
+    "plaintiff":"@C49GskstTGIrvYPqvTk+Vjyj23tD0wbCSkvX7A4zoHw=.ed25519",  
+    "defendant":"@Sg5b3BjZH8XWyJ7mGpH3txrDJmIQtSGxV6MbH6CgeCw=.ed25519",  
+    "messagekey":"%w5S3q0eVkTzcfpIKdIR3tJueFTMIOQP1lwcsQkhWSMs=.sha256"                        
+}
+```
+Response e.g: (dealtag:0-init, 1-affirm the statement to be true, 2-things didn't turn out like that)
+```json
+{
+    "error_code": 0,
+    "error_message": "SUCCESS",
+    "data": [
+        {
+            "plaintiff": "@C49GskstTGIrvYPqvTk+Vjyj23tD0wbCSkvX7A4zoHw=.ed25519",
+            "defendant": "@Sg5b3BjZH8XWyJ7mGpH3txrDJmIQtSGxV6MbH6CgeCw=.ed25519",
+            "messagekey": "%w5S3q0eVkTzcfpIKdIR3tJueFTMIOQP1lwcsQkhWSMs=.sha256",
+            "reasons": "sex",
+            "dealtag": "0",
+            "recordtime": 1649821765131,
+            "dealtime": 1649821765131,
+            "dealreward": ""
+        }
+    ]
+}
+```
+
+9.the pub administrator handle the data about tip-off
+
+```bash
+POST http://{ssb-server-public-ip}:18008/ssb/api/tippedoff-deal
+```
+Body: (dealtag:0-init, 1-affirm the statement to be true, 2-things didn't turn out like that)
+```json
+{
+    "plaintiff":"@C49GskstTGIrvYPqvTk+Vjyj23tD0wbCSkvX7A4zoHw=.ed25519",  
+    "defendant":"@Sg5b3BjZH8XWyJ7mGpH3txrDJmIQtSGxV6MbH6CgeCw=.ed25519",  
+    "messagekey":"%w5S3q0eVkTzcfpIKdIR3tJueFTMIOQP1lwcsQkhWSMs=.sha256",   
+    "reasons":"sex",
+    "dealtag":"1"                            
+}
+```
+Response e.g: 
+```json
+{
+    "error_code": 0,
+    "error_message": "SUCCESS",
+    "data": "success, [@Sg5b3BjZH8XWyJ7mGpH3txrDJmIQtSGxV6MbH6CgeCw=.ed25519] has been block by [pub administrator], and pub will award token to [@C49GskstTGIrvYPqvTk+Vjyj23tD0wbCSkvX7A4zoHw=.ed25519]"
+}
 ```
 
 3.Channel establishment and pre-deposit service  

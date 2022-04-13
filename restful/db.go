@@ -2,6 +2,7 @@ package restful
 
 import (
 	"database/sql"
+	"fmt"
 	_ "github.com/mattn/go-sqlite3"
 	"go.cryptoscope.co/ssb/restful/params"
 	"sync"
@@ -45,12 +46,12 @@ CREATE TABLE IF NOT EXISTS "likedetail" (
 );
 CREATE TABLE IF NOT EXISTS "violationrecord" (
    "uid" INTEGER PRIMARY KEY AUTOINCREMENT,
-   "recordtime" INTEGER NULL
+   "recordtime" INTEGER NULL,
    "plaintiff" TEXT NULL,
    "defendant" TEXT NULL,
    "messagekey" TEXT NULL,
    "reasons" TEXT NULL,
-   "dealtag" bit NULL DEFAULT '0',
+   "dealtag" TEXT NULL DEFAULT '0',
    "dealtime" INTEGER NULL,
    "dealreward" TEXT NULL default ''
 );
@@ -61,8 +62,6 @@ CREATE TABLE IF NOT EXISTS "violationrecord" (
 	}
 	return &PubDB{db: db}, nil
 }
-
-//for table violationrecord, dealtag=0举报 =1属实 =2事实不清，不予处理
 
 //InsertDataCalcTime  Violation record
 func (pdb *PubDB) InsertLastScanTime(ts int64) (lastid int64, err error) {
@@ -307,15 +306,15 @@ func (pdb *PubDB) InsertViolation(recordtime int64, plaintiff, defendant, messag
 	if err != nil {
 		return 0, err
 	}
-	if xnum != 0 {
+	if xnum > 0 {
 		return -1, err
 	}
 
-	stmt, err := pdb.db.Prepare("INSERT INTO violationrecord(recordtime,plaintiff,defendant,messagekey,reasons) VALUES (?,?,?,?,?)")
+	stmt, err := pdb.db.Prepare("INSERT INTO violationrecord(recordtime,plaintiff,defendant,messagekey,reasons,dealtime) VALUES (?,?,?,?,?,?)")
 	if err != nil {
 		return 0, err
 	}
-	res, err := stmt.Exec(recordtime, plaintiff, defendant, messagekey, reason)
+	res, err := stmt.Exec(recordtime, plaintiff, defendant, messagekey, reason, recordtime)
 	if err != nil {
 		return 0, err
 	}
@@ -361,7 +360,7 @@ func (pdb *PubDB) CountViolationByWhere(lplaintiff, defendant, messagekey string
 func (pdb *PubDB) SelectViolationByWhere(plaintiff, defendant, messagekey, reasons, dealtag string) (num []*TippedOffStu, err error) {
 	sqlstr := "SELECT * FROM violationrecord"
 	if plaintiff != "" || defendant != "" || messagekey != "" || reasons != "" || dealtag != "" {
-		sqlstr += "where uid!=-1"
+		sqlstr += " where uid!=-1"
 		if plaintiff != "" {
 			sqlstr += " and plaintiff='" + plaintiff + "'"
 		}
@@ -378,6 +377,7 @@ func (pdb *PubDB) SelectViolationByWhere(plaintiff, defendant, messagekey, reaso
 			sqlstr += " and dealtag='" + dealtag + "'"
 		}
 	}
+	fmt.Println(sqlstr)
 	rows, err := pdb.db.Query(sqlstr)
 	if err != nil {
 		return nil, err
