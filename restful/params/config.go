@@ -66,3 +66,6 @@ var PubID = ""
 
 // ReportRewarding default 0
 var ReportRewarding = 0
+
+//RegistrationAwarding
+var RegistrationAwarding = 0

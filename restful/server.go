@@ -107,6 +107,8 @@ func Start(ctx *cli.Context) {
 
 	go DoMessageTask(ctx)
 
+	go dealBlacklist()
+
 	<-quitSignal
 	err = server.Shutdown(context.Background())
 	if err != nil {
@@ -676,11 +678,34 @@ func ChannelDeal(partnerAddress string) (err error) {
 			fmt.Println(fmt.Sprintf(PrintTime()+"[Pub-Client-ChannelDeal-ERROR]create channel err %s", err))
 			return
 		}
-		fmt.Println(fmt.Sprintf(PrintTime()+"[Pub-Client-ChannelDeal-OK]create channel success ,with %s", partnerAddress))
+		fmt.Println(fmt.Sprintf(PrintTime()+"[Pub-Client-ChannelDeal-OK]create channel success, with %s", partnerAddress))
+
+		//registration award
+		err = sendToken(partnerAddress, int64(params.RegistrationAwarding), true)
+		fmt.Println(fmt.Sprintf(PrintTime()+"[Pub-Client-ChannelDeal-OK]send registration award to %s, err=%s", partnerAddress, err))
+
 	} else {
 		fmt.Println(fmt.Sprintf(PrintTime()+"[Pub-Client-ChannelDeal-OK]channel has exist, with %s", partnerAddress))
 	}
 
+	return
+}
+
+// sendToken
+func sendToken(partnerAddress string, xamount int64, isdirect bool) (err error) {
+	_, err = HexToAddress(partnerAddress)
+	if err != nil {
+		err = fmt.Errorf("[sendToken]verify eth-address [%s] error=%s", partnerAddress, err)
+		return
+	}
+	photonNode := &PhotonNode{
+		Host:       "http://" + params.PhotonHost,
+		Address:    params.PhotonAddress,
+		APIAddress: params.PhotonHost,
+		DebugCrash: false,
+	}
+	amount := new(big.Int).Mul(big.NewInt(params.Finney), big.NewInt(xamount))
+	err = photonNode.SendTrans(partnerAddress, amount, params.TokenAddress, isdirect)
 	return
 }
 
@@ -690,7 +715,7 @@ func checkPubChannelBalance() (err error) {
 		clientaddrStr := info.EthAddress
 		_, err = HexToAddress(clientaddrStr)
 		if err != nil {
-			err = fmt.Errorf("[Pub-CheckPubChannelBalance]clientid [%v] error=%s", info.ID, err)
+			err = fmt.Errorf("[Pub-CheckPubChannelBalance]verify clientid [%v] 's ETH-ADDRSS error=%s", info.ID, err)
 			return
 		}
 		pubNode := &PhotonNode{
@@ -721,4 +746,57 @@ func checkPubChannelBalance() (err error) {
 		time.Sleep(time.Second)
 	}
 	return
+}
+
+// dealBlacklist
+func dealBlacklist() {
+	for {
+		time.Sleep(time.Second * 10)
+		//get blacklist info
+		blacklists, err := likeDB.SelectViolationByWhere("", "", "", "", "1")
+		if err != nil {
+			fmt.Println(fmt.Sprintf(PrintTime()+"dealBlacklist-Failed to get blacklist, err=%s", err))
+		}
+		for _, info := range blacklists {
+			dealObj := info.Defendant
+			//block him
+			err = contactSomeone(nil, dealObj, false, true)
+			if err != nil {
+				fmt.Println(fmt.Sprintf("dealBlacklist-Unfollow and block %s failed", dealObj))
+			}
+			fmt.Println(fmt.Sprintf(PrintTime()+"dealBlacklist-Success to Unfollow and block %s", dealObj))
+			time.Sleep(time.Second * 3)
+			//award plaintiff
+			plaintiff := info.Plaintiff
+			dealReward := info.Dealreward
+			if strings.Index(dealReward, "-") != -1 {
+				//awards have been issued
+			} else {
+				// No awards have been issued yet, for some reason
+				name2addr, err := GetNodeProfile(plaintiff)
+				if err != nil {
+					fmt.Println(fmt.Sprintf("dealBlacklist-Get plaintiff's profile failed, err=%s", err))
+					continue
+				}
+				if len(name2addr) != 1 {
+					continue
+				}
+				addrPlaintiff := name2addr[0].EthAddress
+
+				err = sendToken(addrPlaintiff, int64(params.ReportRewarding), true)
+				if err != nil {
+					fmt.Println(fmt.Sprintf(PrintTime()+"dealBlacklist-Failed to award to %s for ReportRewarding, err=%s", plaintiff, err))
+					continue
+				}
+				fmt.Println(fmt.Sprintf(PrintTime()+"dealBlacklist-Success to award to %s for ReportRewarding", plaintiff))
+				_, err = likeDB.UpdateViolation(info.DealTag, info.Dealtime, string(params.ReportRewarding)+"-", plaintiff, dealObj, info.MessageKey)
+				if err != nil {
+					fmt.Println(fmt.Sprintf(PrintTime()+"dealBlacklist-Failed to update ReportRewarding to %s", plaintiff))
+					continue
+				}
+
+			}
+
+		}
+	}
 }

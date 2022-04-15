@@ -85,7 +85,8 @@ var app = cli.App{
 		&cli.IntFlag{Name: "service-port", Value: 10008, Usage: "port' for the metalife service to listen on."},
 		&cli.IntFlag{Name: "message-scan-interval", Value: 60, Usage: "the time interval at which messages are scanned and calculated (unit:second)."},
 		&cli.IntFlag{Name: "min-balance-inchannel", Value: 1, Usage: "minimum balance in photon channel between this pub and ssb client (unit: 1e18 wei)."},
-		&cli.IntFlag{Name: "report-rewarding", Value: 1, Usage: "pub will reward the person who provides the report (if the report is true). (unit: 1e18 wei)"},
+		&cli.IntFlag{Name: "report-rewarding", Value: 0, Usage: "pub will reward the person who provides the report (if the report is true). (unit: 1e15 wei)"},
+		&cli.IntFlag{Name: "registration-rewarding", Value: 0, Usage: "pub will reward the person who provides ethereum address for his ssb client. (unit: 1e15 wei)"},
 		&keyFileFlag,
 		&unixSockFlag,
 		&cli.BoolFlag{Name: "verbose,vv", Usage: "print muxrpc packets"},
@@ -196,6 +197,12 @@ func initClient(ctx *cli.Context) error {
 		return fmt.Errorf("report-rewarding %v error", reportrewarding)
 	}
 	params.ReportRewarding = reportrewarding
+
+	registrationawarding := ctx.Int("registration-rewarding")
+	if registrationawarding < 0 {
+		return fmt.Errorf("registration-rewarding %v error", registrationawarding)
+	}
+	params.RegistrationAwarding = registrationawarding
 
 	dstr := ctx.String("timeout")
 	if dstr != "" {

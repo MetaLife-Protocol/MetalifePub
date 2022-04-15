@@ -58,8 +58,12 @@ chmod +600 ./secret
 #   --token-address value          which token is used in metalife app,if set,the default will be replaced (default: "0x6601F810eaF2fa749EEa10533Fd4CC23B8C791dc")
 #   --photon-host value            host:port link to the photon service. (default: "127.0.0.1:11001")
 #   --settle-timeout value         set settle timeout on photon. (default: 40000)
-#   --service-port value           port' for the metalife service to listen on. (default: 10008)
-#   --message-scan-interval value  the time interval at which messages are scanned and calculated,unit:second. (default: 60)
+#   --service-port value            port' for the metalife service to listen on. (default: 10008)
+#   --message-scan-interval value   the time interval at which messages are scanned and calculated (unit:second). (default: 60)
+#   --min-balance-inchannel value   minimum balance in photon channel between this pub and ssb client (unit: 1e18 wei). (default: 1)
+#   --report-rewarding value        pub will reward the person who provides the report (if the report is true). (unit: 1e15 wei) (default: 0)
+#   --registration-rewarding value  pub will reward the person who provides ethereum address for his ssb client. (unit: 1e15 wei) (default: 0)
+
 
 nohup metalifeserver \
  --pub-eth-address 0xBaBaeafB77585472531D3E8E6f3C3bCF4c04cBE4 \
@@ -69,6 +73,9 @@ nohup metalifeserver \
  --settle-timeout 40000 \
  --service-port 10008 \
  --message-scan-interval 60 \
+ --min-balance-inchannel 1 \
+ --report-rewarding 0 \
+ --registration-rewarding 0 \
  > log &
 ```
 
@@ -308,7 +315,6 @@ Body: (dealtag:0-init, 1-affirm the statement to be true, 2-things didn't turn o
     "plaintiff":"@C49GskstTGIrvYPqvTk+Vjyj23tD0wbCSkvX7A4zoHw=.ed25519",  
     "defendant":"@Sg5b3BjZH8XWyJ7mGpH3txrDJmIQtSGxV6MbH6CgeCw=.ed25519",  
     "messagekey":"%w5S3q0eVkTzcfpIKdIR3tJueFTMIOQP1lwcsQkhWSMs=.sha256",   
-    "reasons":"sex",
     "dealtag":"1"                            
 }
 ```

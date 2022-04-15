@@ -2,7 +2,6 @@ package restful
 
 import (
 	"database/sql"
-	"fmt"
 	_ "github.com/mattn/go-sqlite3"
 	"go.cryptoscope.co/ssb/restful/params"
 	"sync"
@@ -377,7 +376,7 @@ func (pdb *PubDB) SelectViolationByWhere(plaintiff, defendant, messagekey, reaso
 			sqlstr += " and dealtag='" + dealtag + "'"
 		}
 	}
-	fmt.Println(sqlstr)
+	//fmt.Println(sqlstr)
 	rows, err := pdb.db.Query(sqlstr)
 	if err != nil {
 		return nil, err
