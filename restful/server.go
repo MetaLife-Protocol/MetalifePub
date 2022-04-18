@@ -691,7 +691,8 @@ func ChannelDeal(partnerAddress string) (err error) {
 	return
 }
 
-// sendToken
+// sendToken  pub paid additionally
+// It is stipulated that 'the award' needs to be paid additionally by pub, and the 'min-balance-inchannel' is not used
 func sendToken(partnerAddress string, xamount int64, isdirect bool) (err error) {
 	_, err = HexToAddress(partnerAddress)
 	if err != nil {
@@ -705,6 +706,10 @@ func sendToken(partnerAddress string, xamount int64, isdirect bool) (err error) 
 		DebugCrash: false,
 	}
 	amount := new(big.Int).Mul(big.NewInt(params.Finney), big.NewInt(xamount))
+	err = photonNode.Deposit(partnerAddress, params.TokenAddress, amount, params.SettleTime)
+	if err != nil {
+		return err
+	}
 	err = photonNode.SendTrans(partnerAddress, amount, params.TokenAddress, isdirect)
 	return
 }
@@ -783,6 +788,7 @@ func dealBlacklist() {
 				}
 				addrPlaintiff := name2addr[0].EthAddress
 
+				//另行支付
 				err = sendToken(addrPlaintiff, int64(params.ReportRewarding), true)
 				if err != nil {
 					fmt.Println(fmt.Sprintf(PrintTime()+"dealBlacklist-Failed to award to %s for ReportRewarding, err=%s", plaintiff, err))
