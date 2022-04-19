@@ -120,7 +120,7 @@ func Start(ctx *cli.Context) {
 func TippedOff(w rest.ResponseWriter, r *rest.Request) {
 	var resp *APIResponse
 	defer func() {
-		fmt.Println(fmt.Sprintf("Restful Api Call ----> TippedWhoOff ,err=%s", resp.ToFormatString()))
+		fmt.Println(fmt.Sprintf(PrintTime()+"Restful Api Call ----> TippedWhoOff ,err=%s", resp.ToFormatString()))
 		writejson(w, resp)
 	}()
 	var req TippedOffStu
@@ -153,7 +153,8 @@ func TippedOff(w rest.ResponseWriter, r *rest.Request) {
 func GetTippedOffInfo(w rest.ResponseWriter, r *rest.Request) {
 	var resp *APIResponse
 	defer func() {
-		fmt.Println(fmt.Sprintf("Restful Api Call ----> GetTippedOffInfo ,err=%s", resp.ToFormatString()))
+		//fmt.Println(fmt.Sprintf("Restful Api Call ----> GetTippedOffInfo ,err=%s", resp.ToFormatString()))
+		fmt.Println(fmt.Sprintf(PrintTime()+"Restful Api Call ----> GetTippedOffInfo ,err=%s", resp.ErrorMsg))
 		writejson(w, resp)
 	}()
 	var req TippedOffStu
@@ -171,7 +172,7 @@ func GetTippedOffInfo(w rest.ResponseWriter, r *rest.Request) {
 func DealTippedOff(w rest.ResponseWriter, r *rest.Request) {
 	var resp *APIResponse
 	defer func() {
-		fmt.Println(fmt.Sprintf("Restful Api Call ----> DealTippedOff ,err=%s", resp.ToFormatString()))
+		fmt.Println(fmt.Sprintf(PrintTime()+"Restful Api Call ----> DealTippedOff ,err=%s", resp.ToFormatString()))
 		writejson(w, resp)
 	}()
 	var req TippedOffStu
@@ -375,7 +376,7 @@ func contactSomeone(ctx *cli.Context, dealwho string, isfollow, isblock bool) (e
 func GetPubWhoami(w rest.ResponseWriter, r *rest.Request) {
 	var resp *APIResponse
 	defer func() {
-		fmt.Println(fmt.Sprintf("Restful Api Call ----> GetPubWhoami ,err=%s", resp.ToFormatString()))
+		fmt.Println(fmt.Sprintf(PrintTime()+"Restful Api Call ----> GetPubWhoami ,err=%s", resp.ToFormatString()))
 		writejson(w, resp)
 	}()
 
@@ -390,7 +391,7 @@ func GetPubWhoami(w rest.ResponseWriter, r *rest.Request) {
 func clientid2Profiles(w rest.ResponseWriter, r *rest.Request) {
 	var resp *APIResponse
 	defer func() {
-		fmt.Println(fmt.Sprintf("Restful Api Call ----> node-infos ,err=%s", resp.ToFormatString()))
+		fmt.Println(fmt.Sprintf(PrintTime()+"Restful Api Call ----> node-infos ,err=%s", resp.ErrorMsg))
 		writejson(w, resp)
 	}()
 
@@ -403,7 +404,7 @@ func clientid2Profiles(w rest.ResponseWriter, r *rest.Request) {
 func clientid2Profile(w rest.ResponseWriter, r *rest.Request) {
 	var resp *APIResponse
 	defer func() {
-		fmt.Println(fmt.Sprintf("Restful Api Call ----> node-info ,err=%s", resp.ToFormatString()))
+		fmt.Println(fmt.Sprintf(PrintTime()+"Restful Api Call ----> node-infos ,err=%s", resp.ErrorMsg))
 		writejson(w, resp)
 	}()
 	var req Name2ProfileReponse
@@ -422,7 +423,7 @@ func clientid2Profile(w rest.ResponseWriter, r *rest.Request) {
 func UpdateEthAddr(w rest.ResponseWriter, r *rest.Request) {
 	var resp *APIResponse
 	defer func() {
-		fmt.Println(fmt.Sprintf("Restful Api Call ----> UpdateEthAddr ,err=%s", resp.ToFormatString()))
+		fmt.Println(fmt.Sprintf(PrintTime()+"Restful Api Call ----> UpdateEthAddr ,err=%s", resp.ToFormatString()))
 		writejson(w, resp)
 	}()
 	var req = &Name2ProfileReponse{}
@@ -478,7 +479,7 @@ func GetNodeProfile(cid string) (datas []*Name2ProfileReponse, err error) {
 func GetAllLikes(w rest.ResponseWriter, r *rest.Request) {
 	var resp *APIResponse
 	defer func() {
-		fmt.Println(fmt.Sprintf("Restful Api Call ----> GetAllLikes ,err=%s", resp.ToFormatString()))
+		fmt.Println(fmt.Sprintf(PrintTime()+"Restful Api Call ----> GetAllLikes ,err=%s", resp.ErrorMsg))
 		writejson(w, resp)
 	}()
 
@@ -491,7 +492,7 @@ func GetAllLikes(w rest.ResponseWriter, r *rest.Request) {
 func GetSomeoneLike(w rest.ResponseWriter, r *rest.Request) {
 	var resp *APIResponse
 	defer func() {
-		fmt.Println(fmt.Sprintf("Restful Api Call ----> GetSomeoneLike ,err=%s", resp.ToFormatString()))
+		fmt.Println(fmt.Sprintf(PrintTime()+"Restful Api Call ----> GetSomeoneLike ,err=%s", resp.ErrorMsg))
 		writejson(w, resp)
 	}()
 	var req Name2ProfileReponse
@@ -510,7 +511,7 @@ func GetSomeoneLike(w rest.ResponseWriter, r *rest.Request) {
 func CalcGetLikeSum(someoneOrAll string) (datas map[string]*LasterNumLikes, err error) {
 	likes, err := likeDB.SelectLikeSum(someoneOrAll)
 	if err != nil {
-		fmt.Println(fmt.Sprintf("Failed to db-SelectLikeSum", err))
+		fmt.Println(fmt.Sprintf(PrintTime()+"Failed to db-SelectLikeSum", err))
 		return
 	}
 	datas = likes
@@ -681,7 +682,7 @@ func ChannelDeal(partnerAddress string) (err error) {
 		fmt.Println(fmt.Sprintf(PrintTime()+"[Pub-Client-ChannelDeal-OK]create channel success, with %s", partnerAddress))
 
 		//registration award
-		err = sendToken(partnerAddress, int64(params.RegistrationAwarding), true)
+		err = sendToken(partnerAddress, int64(params.RegistrationAwarding), true, false)
 		fmt.Println(fmt.Sprintf(PrintTime()+"[Pub-Client-ChannelDeal-OK]send registration award to %s, err=%s", partnerAddress, err))
 
 	} else {
@@ -693,7 +694,7 @@ func ChannelDeal(partnerAddress string) (err error) {
 
 // sendToken  pub paid additionally
 // It is stipulated that 'the award' needs to be paid additionally by pub, and the 'min-balance-inchannel' is not used
-func sendToken(partnerAddress string, xamount int64, isdirect bool) (err error) {
+func sendToken(partnerAddress string, xamount int64, isdirect, sync bool) (err error) {
 	_, err = HexToAddress(partnerAddress)
 	if err != nil {
 		err = fmt.Errorf("[sendToken]verify eth-address [%s] error=%s", partnerAddress, err)
@@ -706,11 +707,11 @@ func sendToken(partnerAddress string, xamount int64, isdirect bool) (err error) 
 		DebugCrash: false,
 	}
 	amount := new(big.Int).Mul(big.NewInt(params.Finney), big.NewInt(xamount))
-	err = photonNode.Deposit(partnerAddress, params.TokenAddress, amount, params.SettleTime)
+	err = photonNode.Deposit(partnerAddress, params.TokenAddress, amount, 48)
 	if err != nil {
 		return err
 	}
-	err = photonNode.SendTrans(partnerAddress, amount, params.TokenAddress, isdirect)
+	err = photonNode.SendTrans(params.TokenAddress, amount, partnerAddress, isdirect, sync)
 	return
 }
 
@@ -741,7 +742,7 @@ func checkPubChannelBalance() (err error) {
 		var diffNum = new(big.Int).Sub(minNum, nowNum)
 		if minNum.Cmp(nowNum) == 1 {
 			//补充至MinBalanceInchannel
-			err0 := pubNode.Deposit(clientaddrStr, params.TokenAddress, diffNum, params.SettleTime)
+			err0 := pubNode.Deposit(clientaddrStr, params.TokenAddress, diffNum, 48)
 			if err0 != nil {
 				err = fmt.Errorf("[Pub-CheckPubChannelBalance]between pub %v and %v client,Deposit to channel err=", params.PhotonAddress, clientaddrStr, err0)
 				continue
@@ -769,7 +770,7 @@ func dealBlacklist() {
 			if err != nil {
 				fmt.Println(fmt.Sprintf("dealBlacklist-Unfollow and block %s failed", dealObj))
 			}
-			fmt.Println(fmt.Sprintf(PrintTime()+"dealBlacklist-Success to Unfollow and block %s", dealObj))
+			fmt.Println(fmt.Sprintf(PrintTime()+"dealBlacklist-Success to Unfollow and Block %s", dealObj))
 			time.Sleep(time.Second * 3)
 			//award plaintiff
 			plaintiff := info.Plaintiff
@@ -789,15 +790,15 @@ func dealBlacklist() {
 				addrPlaintiff := name2addr[0].EthAddress
 
 				//另行支付
-				err = sendToken(addrPlaintiff, int64(params.ReportRewarding), true)
+				err = sendToken(addrPlaintiff, int64(params.ReportRewarding), true, false)
 				if err != nil {
-					fmt.Println(fmt.Sprintf(PrintTime()+"dealBlacklist-Failed to award to %s for ReportRewarding, err=%s", plaintiff, err))
+					fmt.Println(fmt.Sprintf(PrintTime()+"dealBlacklist-Failed to Award to %s for ReportRewarding, err=%s", plaintiff, err))
 					continue
 				}
-				fmt.Println(fmt.Sprintf(PrintTime()+"dealBlacklist-Success to award to %s for ReportRewarding", plaintiff))
+				fmt.Println(fmt.Sprintf(PrintTime()+"dealBlacklist-Success to Award to %s for ReportRewarding", plaintiff))
 				_, err = likeDB.UpdateViolation(info.DealTag, info.Dealtime, string(params.ReportRewarding)+"-", plaintiff, dealObj, info.MessageKey)
 				if err != nil {
-					fmt.Println(fmt.Sprintf(PrintTime()+"dealBlacklist-Failed to update ReportRewarding to %s", plaintiff))
+					fmt.Println(fmt.Sprintf(PrintTime()+"dealBlacklist-Failed to Update ReportRewarding to %s", plaintiff))
 					continue
 				}
 

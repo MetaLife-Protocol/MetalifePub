@@ -161,11 +161,11 @@ func (node *PhotonNode) SpecifiedChannel(channelIdentifier string) (c channel.Ch
 
 }
 
-func (node *PhotonNode) SendTrans(tokenAddress string, amount *big.Int, targetAddress string, isDirect bool) error {
+func (node *PhotonNode) SendTrans(tokenAddress string, amount *big.Int, targetAddress string, isDirect bool, sync bool) error {
 	p, err := json.Marshal(TransferPayload{
 		Amount:   amount,
 		IsDirect: isDirect,
-		Sync:     true,
+		Sync:     sync,
 	})
 	req := &Req{
 		FullURL: node.Host + "/api/1/transfers/" + tokenAddress + "/" + targetAddress,
