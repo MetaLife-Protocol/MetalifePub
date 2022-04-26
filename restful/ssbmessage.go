@@ -44,6 +44,15 @@ type ContentVoteStru struct {
 	Vote *VoteStru `json:"vote"`
 }
 
+// ContentContactStru
+type ContentContactStru struct {
+	Type      string `json:"type"`
+	Contact   string `json:"contact"`
+	Following bool   `json:"following"`
+	Blocking  bool   `json:"blocking"`
+	Pub       bool   `json:"pub"`
+}
+
 // TippedOff reasons:"xxx|xxx|xxx"
 type TippedOffStu struct {
 	Plaintiff  string `json:"plaintiff"`

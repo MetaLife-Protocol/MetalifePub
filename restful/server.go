@@ -90,7 +90,7 @@ func Start(ctx *cli.Context) {
 		//tipped off infomation 所有举报的信息汇总
 		rest.Get("/ssb/api/tippedoff-info", GetTippedOffInfo),
 
-		//tipped off infomation 对举报的信息进行处理，认证，如属实，则对该账号进行黑名单处理，永久unfollow
+		//tipped off infomation 对举报的信息进行处理，认证，如属实，则对该账号进行黑名单处理
 		rest.Post("/ssb/api/tippedoff-deal", DealTippedOff),
 	)
 	if err != nil {
@@ -107,7 +107,7 @@ func Start(ctx *cli.Context) {
 
 	go DoMessageTask(ctx)
 
-	go dealBlacklist()
+	//go dealBlacklist()
 
 	<-quitSignal
 	err = server.Shutdown(context.Background())
@@ -196,9 +196,30 @@ func DealTippedOff(w rest.ResponseWriter, r *rest.Request) {
 		}
 		fmt.Println(fmt.Sprintf(PrintTime()+"Success to Unfollow and block %s", req.Defendant))
 
-		//2 pub给‘the plaintiff’发token(举报不属于消息,其实质是为了pub的良好环境,所以pub来给plaintiff发token是应该的)
-		//这个工作交由另一个线程去处理（还要持续unfollow and block the defendant）
-		resp = NewAPIResponse(err, fmt.Sprintf("success, [%s] has been block by [pub administrator], and pub will award token to [%s]", req.Defendant, req.Plaintiff))
+		//2 pub另行支付给‘the plaintiff’发token
+		name2addr, err := GetNodeProfile(req.Plaintiff)
+		if err != nil || len(name2addr) != 1 {
+			resp = NewAPIResponse(fmt.Errorf("DealTippedOff-Get plaintiff's ethereum address failed, err= not found or %s", err), "failed")
+			return
+		}
+		/*		if len(name2addr) != 1 {
+				resp = NewAPIResponse(fmt.Errorf("DealTippedOff-Get plaintiff's ethereum address failed, err= not found"), "failed")
+				return
+			}*/
+		addrPlaintiff := name2addr[0].EthAddress
+
+		err = sendToken(addrPlaintiff, int64(params.ReportRewarding), true, false)
+		if err != nil {
+			resp = NewAPIResponse(fmt.Errorf("DealTippedOff-Failed to Award to %s for ReportRewarding,err= %s", req.Plaintiff, err), "failed")
+			return
+		}
+		_, err = likeDB.UpdateViolation(req.DealTag, dtime, fmt.Sprintf("%d%s", params.ReportRewarding, "e15-"), req.Plaintiff, req.Defendant, req.MessageKey)
+		if err != nil {
+			rest.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		resp = NewAPIResponse(err, fmt.Sprintf("success, [%s] has been block by [pub administrator], and pub send award token to [%s]", req.Defendant, req.Plaintiff))
 		return
 	}
 	resp = NewAPIResponse(err, "success")
@@ -608,6 +629,24 @@ func SsbMessageAnalysis(r *muxrpc.ByteSource) (int64, error) {
 			} else {
 				fmt.Println(fmt.Sprintf(PrintTime()+"Unmarshal for about , err %v", err))
 			}
+
+			//4、contact触发对blakclist的处理
+			ccs := ContentContactStru{}
+			err = json.Unmarshal(msgStruct.Value.Content, &ccs)
+			if err == nil {
+				if ccs.Type == "contact" {
+					if IsBlackList(ccs.Contact) && ccs.Following && !ccs.Blocking && ccs.Pub {
+						//block he
+						err = contactSomeone(nil, ccs.Contact, false, true)
+						if err != nil {
+							fmt.Println(fmt.Sprintf(PrintTime()+"Unfollow and Block %s FAILED", ccs.Contact))
+						}
+						fmt.Println(fmt.Sprintf(PrintTime()+"Unfollow and Block %s SUCCESS", ccs.Contact))
+					}
+				}
+			} else {
+				fmt.Println(fmt.Sprintf(PrintTime()+"Unmarshal for contact , err %v", err))
+			}
 		}
 	}
 
@@ -754,10 +793,22 @@ func checkPubChannelBalance() (err error) {
 	return
 }
 
-// dealBlacklist
+func IsBlackList(defendant string) bool {
+	blacklists, err := likeDB.SelectViolationByWhere("", defendant, "", "", "1")
+	if err != nil {
+		fmt.Println(fmt.Sprintf(PrintTime()+"selectBlacklist-Failed to get blacklist, err=%s", err))
+		return false
+	}
+	if len(blacklists) > 0 {
+		return true
+	}
+	return false
+}
+
+/*// dealBlacklist
 func dealBlacklist() {
 	for {
-		time.Sleep(time.Second * 10)
+		time.Sleep(time.Second * 600)
 		//get blacklist info
 		blacklists, err := likeDB.SelectViolationByWhere("", "", "", "", "1")
 		if err != nil {
@@ -806,4 +857,4 @@ func dealBlacklist() {
 
 		}
 	}
-}
+}*/
