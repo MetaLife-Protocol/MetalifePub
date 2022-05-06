@@ -65,17 +65,24 @@ type TippedOffStu struct {
 	Dealreward string `json:"dealreward"`
 }
 
-//VoteStru
+// VoteStru
 type VoteStru struct {
 	Link       string `json:"link"`
 	value      int    `json:"value"`
 	Expression string `json:"expression"`
 }
 
+// ContentAboutStru
 type ContentAboutStru struct {
 	Type  string `json:"type"`
 	About string `json:"about"`
 	Name  string `json:"name"`
+}
+
+// ContentPostStru
+type ContentPostStru struct {
+	Type string `json:"type"`
+	Text string `json:"text"`
 }
 
 // LasterNumLikes
@@ -106,3 +113,6 @@ type Whoami struct {
 	Pub_Id          string `json:"pub_id"`
 	Pub_Eth_Address string `json:"pub_eth_address"`
 }
+
+// SensitiveWords
+var SensitiveWords []string

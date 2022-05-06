@@ -25,7 +25,9 @@ import (
 	/*"go.cryptoscope.co/ssb/message"
 	"go.mindeco.de/ssb-refs"*/
 
+	"bufio"
 	"go.cryptoscope.co/ssb"
+	"go.cryptoscope.co/ssb/dfa"
 	"go.cryptoscope.co/ssb/message"
 	"go.mindeco.de/ssb-refs"
 	"os"
@@ -44,6 +46,8 @@ var log kitlog.Logger
 var lastAnalysisTimesnamp int64
 
 var likeDB *PubDB
+
+var dfax *dfa.DFA
 
 // Start
 func Start(ctx *cli.Context) {
@@ -311,12 +315,35 @@ func initDb(ctx *cli.Context) error {
 
 // DoMessageTask get message from the server copy
 func DoMessageTask(ctx *cli.Context) {
+	//init db
 	if err := initDb(ctx); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
 	time.Sleep(time.Second * 1)
 
+	//init sensitive words
+	f, err := os.Open(params.SensitiveWordsFilePath)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	defer f.Close()
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		word := scanner.Text()
+		SensitiveWords = append(SensitiveWords, word)
+	}
+	if err := scanner.Err(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	dfax = dfa.New()
+	dfax.AddBadWords(SensitiveWords)
+
+	time.Sleep(time.Second * 1)
+
+	//ssb-message work
 	for {
 		//构建符合条件的message请求
 		var ref refs.FeedRef
@@ -597,7 +624,7 @@ func SsbMessageAnalysis(r *muxrpc.ByteSource) (int64, error) {
 				if string(cvs.Type) == "vote" {
 					/*if cvs.Vote.Expression != "️Unlike" { //1:❤️ 2:👍 3:✌️ 4:👍这种判断不知道什么是错误的：可以同时有点赞和取消点赞的判断
 						LikeDetail = append(LikeDetail, cvs.Vote.Link)
-						timesp := time.Unix(int64(msgStruct.Value.Timestamp)/1e3, 0).Format("2006-01-02 15:04:05")
+						timesp := time.Unix(int64(的我们负责，别人运营的出了问题他们负责，另外，客户端可以不经过pub发公msgStruct.Value.Timestamp)/1e3, 0).Format("2006-01-02 15:04:05")
 						fmt.Println("like-time:\t" + timesp + "MessageKey:\t" + cvs.Vote.Link)
 					}*/
 					//get the Unlike tag ,先记录被like的link，再找author；由于图谱深度不一样，按照时间顺序查询存在问题，则先统一记录
@@ -639,13 +666,31 @@ func SsbMessageAnalysis(r *muxrpc.ByteSource) (int64, error) {
 						//block he
 						err = contactSomeone(nil, ccs.Contact, false, true)
 						if err != nil {
-							fmt.Println(fmt.Sprintf(PrintTime()+"Unfollow and Block %s FAILED", ccs.Contact))
+							fmt.Println(fmt.Sprintf(PrintTime()+"[black-list]Unfollow and Block %s FAILED", ccs.Contact))
 						}
-						fmt.Println(fmt.Sprintf(PrintTime()+"Unfollow and Block %s SUCCESS", ccs.Contact))
+						fmt.Println(fmt.Sprintf(PrintTime()+"[black-list]Unfollow and Block %s SUCCESS", ccs.Contact))
 					}
 				}
 			} else {
-				fmt.Println(fmt.Sprintf(PrintTime()+"Unmarshal for contact , err %v", err))
+				fmt.Println(fmt.Sprintf(PrintTime()+"[black-list]Unmarshal for contact , err %v", err))
+			}
+
+			//5、敏感词处理
+			cps := ContentPostStru{}
+			err = json.Unmarshal(msgStruct.Value.Content, &cps)
+			if err == nil {
+				if cps.Type == "post" {
+					postContent := cps.Text
+					_, _, b := dfax.Check(postContent)
+					if b {
+						//block he
+						err = contactSomeone(nil, msgauther, false, true)
+						if err != nil {
+							fmt.Println(fmt.Sprintf(PrintTime()+"[sensitive-check]Unfollow and Block %s FAILED", msgauther))
+						}
+						fmt.Println(fmt.Sprintf(PrintTime()+"[sensitive-check]Unfollow and Block %s SUCCESS", msgauther))
+					}
+				}
 			}
 		}
 	}

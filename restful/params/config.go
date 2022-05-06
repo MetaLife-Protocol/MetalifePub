@@ -69,3 +69,5 @@ var ReportRewarding = 0
 
 //RegistrationAwarding
 var RegistrationAwarding = 0
+
+var SensitiveWordsFilePath = ""

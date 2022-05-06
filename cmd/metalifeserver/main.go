@@ -54,6 +54,8 @@ var (
 	keyFileFlag  = cli.StringFlag{Name: "key,k", Value: "unset"}
 	unixSockFlag = cli.StringFlag{Name: "unixsock", Usage: "if set, unix socket is used instead of tcp"}
 	dataDir      = cli.StringFlag{Name: "datadir", Usage: "directory for storing pub's parsing data"}
+
+	sensitiveWordsFlag = cli.StringFlag{Name: "sensitive-words-file", Usage: "the path of the sensitive-words file"}
 )
 
 func init() {
@@ -64,6 +66,7 @@ func init() {
 	//we use tcp instead of UNIX SOCKET
 	//unixSockFlag.Value = filepath.Join(u.HomeDir, ".ssb-go", "socket")
 	dataDir.Value = filepath.Join(u.HomeDir, ".ssb-go", "pubdata")
+	sensitiveWordsFlag.Value = filepath.Join(u.HomeDir, ".ssb-go", "sensitive.txt")
 
 	log = term.NewColorLogger(os.Stderr, kitlog.NewLogfmtLogger, colorFn)
 }
@@ -87,6 +90,7 @@ var app = cli.App{
 		&cli.IntFlag{Name: "min-balance-inchannel", Value: 1, Usage: "minimum balance in photon channel between this pub and ssb client (unit: 1e18 wei)."},
 		&cli.IntFlag{Name: "report-rewarding", Value: 0, Usage: "pub will reward the person who provides the report (if the report is true). (unit: 1e15 wei)"},
 		&cli.IntFlag{Name: "registration-rewarding", Value: 0, Usage: "pub will reward the person who provides ethereum address for his ssb client. (unit: 1e15 wei)"},
+		&sensitiveWordsFlag,
 		&keyFileFlag,
 		&unixSockFlag,
 		&cli.BoolFlag{Name: "verbose,vv", Usage: "print muxrpc packets"},
@@ -203,6 +207,12 @@ func initClient(ctx *cli.Context) error {
 		return fmt.Errorf("registration-rewarding %v error", registrationawarding)
 	}
 	params.RegistrationAwarding = registrationawarding
+
+	sensitivewordsfilepath := ctx.String("sensitive-words-file")
+	if sensitivewordsfilepath == "" {
+		return fmt.Errorf("Program startup parameters [sensitive-words-file] must be set")
+	}
+	params.SensitiveWordsFilePath = sensitivewordsfilepath
 
 	dstr := ctx.String("timeout")
 	if dstr != "" {
