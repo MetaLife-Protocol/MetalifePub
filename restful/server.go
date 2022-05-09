@@ -206,10 +206,6 @@ func DealTippedOff(w rest.ResponseWriter, r *rest.Request) {
 			resp = NewAPIResponse(fmt.Errorf("DealTippedOff-Get plaintiff's ethereum address failed, err= not found or %s", err), "failed")
 			return
 		}
-		/*		if len(name2addr) != 1 {
-				resp = NewAPIResponse(fmt.Errorf("DealTippedOff-Get plaintiff's ethereum address failed, err= not found"), "failed")
-				return
-			}*/
 		addrPlaintiff := name2addr[0].EthAddress
 
 		err = sendToken(addrPlaintiff, int64(params.ReportRewarding), true, false)
@@ -301,7 +297,7 @@ func initDb(ctx *cli.Context) error {
 		fmt.Errorf(fmt.Sprintf("Failed to init database", err))
 	}
 	if lstime == 0 {
-		_, err = likedb.UpdateLastScanTime(0) //1647503842641
+		_, err = likedb.UpdateLastScanTime(0)
 		if err != nil {
 			fmt.Errorf(fmt.Sprintf("Failed to init database", err))
 		}
@@ -666,7 +662,7 @@ func SsbMessageAnalysis(r *muxrpc.ByteSource) (int64, error) {
 						//block he
 						err = contactSomeone(nil, ccs.Contact, false, true)
 						if err != nil {
-							fmt.Println(fmt.Sprintf(PrintTime()+"[black-list]Unfollow and Block %s FAILED", ccs.Contact))
+							fmt.Println(fmt.Sprintf(PrintTime()+"[black-list]Unfollow and Block %s FAILED, err=%s", ccs.Contact, err))
 						}
 						fmt.Println(fmt.Sprintf(PrintTime()+"[black-list]Unfollow and Block %s SUCCESS", ccs.Contact))
 					}
@@ -686,7 +682,7 @@ func SsbMessageAnalysis(r *muxrpc.ByteSource) (int64, error) {
 						//block he
 						err = contactSomeone(nil, msgauther, false, true)
 						if err != nil {
-							fmt.Println(fmt.Sprintf(PrintTime()+"[sensitive-check]Unfollow and Block %s FAILED", msgauther))
+							fmt.Println(fmt.Sprintf(PrintTime()+"[sensitive-check]Unfollow and Block %s FAILED, err=%s", msgauther, err))
 						}
 						fmt.Println(fmt.Sprintf(PrintTime()+"[sensitive-check]Unfollow and Block %s SUCCESS", msgauther))
 					}
@@ -731,7 +727,7 @@ func SsbMessageAnalysis(r *muxrpc.ByteSource) (int64, error) {
 	for key,value := range TempMsgMap {
 		fmt.Println(key, "<-this round message ID---ClientID->", value.Author)
 	}
-	for key := range ClientID2Name { //取map中的值
+	for key := range ClientID2Name { //取map中的值err
 		fmt.Println(key, "<-ClientID---Name->", ClientID2Name[key])
 	}*/
 

@@ -1,11 +1,13 @@
 package dfa
 
+// Node
 type Node struct {
 	IsEnd bool
 	Value string
 	Child map[rune]*Node
 }
 
+// newNode
 func newNode(val string) *Node {
 	return &Node{
 		IsEnd: false,
@@ -14,15 +16,26 @@ func newNode(val string) *Node {
 	}
 }
 
+// Trie
 type Trie struct {
 	root *Node
 	size int
 }
 
+// Root
 func (t *Trie) Root() *Node {
 	return t.root
 }
 
+// NewTrie
+func NewTrie() *Trie {
+	return &Trie{
+		root: newNode(""),
+		size: 0,
+	}
+}
+
+// Insert
 func (t *Trie) Insert(key string) {
 	curNode := t.root
 	for _, v := range key {
@@ -39,6 +52,7 @@ func (t *Trie) Insert(key string) {
 	}
 }
 
+// PrefixMatch
 func (t *Trie) PrefixMatch(key string) []string {
 	node, _ := t.findNode(key)
 	if node == nil {
@@ -47,6 +61,7 @@ func (t *Trie) PrefixMatch(key string) []string {
 	return t.Walk(node)
 }
 
+// Walk
 func (t *Trie) Walk(node *Node) (ret []string) {
 	if node.IsEnd {
 		ret = append(ret, node.Value)
@@ -57,6 +72,7 @@ func (t *Trie) Walk(node *Node) (ret []string) {
 	return
 }
 
+// findNode
 func (t *Trie) findNode(key string) (node *Node, index int) {
 	curNode := t.root
 	f := false
@@ -81,14 +97,8 @@ func (t *Trie) findNode(key string) (node *Node, index int) {
 	return curNode, index
 }
 
+// Child
 func (t *Trie) Child(key string) *Node {
 	node, _ := t.findNode(key)
 	return node
-}
-
-func NewTrie() *Trie {
-	return &Trie{
-		root: newNode(""),
-		size: 0,
-	}
 }
