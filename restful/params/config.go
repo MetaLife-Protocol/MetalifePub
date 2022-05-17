@@ -67,7 +67,8 @@ var PubID = ""
 // ReportRewarding default 0
 var ReportRewarding = 0
 
-//RegistrationAwarding
+// RegistrationAwarding
 var RegistrationAwarding = 0
 
+// SensitiveWordsFilePath
 var SensitiveWordsFilePath = ""

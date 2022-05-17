@@ -41,8 +41,17 @@ import (
 
 // Version and Build are set by ldflags
 var (
+	// Version version of this build
 	Version = "snapshot"
-	Build   = ""
+
+	// Build build time of this build
+	Build = ""
+
+	// GoVersion go version of this build
+	GoVersion = ""
+
+	// GitCommit git commit of this build
+	GitCommit = ""
 )
 
 var (
@@ -73,8 +82,8 @@ func init() {
 
 var app = cli.App{
 	Name:    os.Args[0],
-	Usage:   "client for controlling Cryptoscope's SSB server",
-	Version: "alpha4",
+	Usage:   "Metalife's application services on SSB pub",
+	Version: "beta1",
 
 	Flags: []cli.Flag{
 		&cli.StringFlag{Name: "shscap", Value: "1KHLiKZvAvjbY1ziZEHMXawbCEIM6qwjCDm3VYRan/s=", Usage: "shs key"},
@@ -140,7 +149,7 @@ func check(err error) {
 
 func main() {
 	cli.VersionPrinter = func(c *cli.Context) {
-		fmt.Printf("%s (rev: %s, built: %s)\n", c.App.Version, Version, Build)
+		fmt.Printf("%s (Rev: %s, Built: %s, GitCommit: %s, GoVersion: %s)\n", c.App.Version, Version, Build, GitCommit, GoVersion)
 	}
 
 	if err := app.Run(os.Args); err != nil {
