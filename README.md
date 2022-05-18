@@ -18,12 +18,12 @@ The above configuration is the basic configuration, and the hardware configurati
 
 ```bash
 git clone https://github.com/MetaLife-Foundation/MetalifePub
-cd MetalifePub 
+cd MetalifePub/cmd/metalifeserver
 export GO111MODULE=on
-go install ./cmd/metalifeserver
+./build.sh
 ```
 
-   **Instruction**
+ **Instruction**
     Just pull the code on the master branch. This branch supports ebt-mutlifromat by default. It should be noted that a photon node needs to be run on the server where Server is installed, and please enter the parameter configuration file **/restful/params/config.go**. The parameter of PhotonAddress(in line 46)  need to be replaced by the address of the photon node running on the same machine (this account needs to ensure that the number of SMT is sufficient, the pub node will automatically establish the channel with each connected client account, and deposit 0.1smt to the channel)
 
  **Make sure the  go-sbot and sbotcli are in the $PATH**
@@ -51,18 +51,19 @@ chmod +600 ./secret
 ```bash
 #see: 
 # metalifeserver --help
-#   --pub-eth-address value        The ethereum address the pub 's address is bound for reward.
-#   --addr value                   tcp address of the sbot to connect to (or listen on) (default: "54.179.3.93:8008")
-#   --remoteKey value              the remote pubkey you are connecting to (by default the local key)
-#   --datadir value                directory for storing pub's parsing data (default: "/home/ubuntu/.ssb-go/pubdata")
-#   --token-address value          which token is used in metalife app,if set,the default will be replaced (default: "0x6601F810eaF2fa749EEa10533Fd4CC23B8C791dc")
-#   --photon-host value            host:port link to the photon service. (default: "127.0.0.1:11001")
-#   --settle-timeout value         set settle timeout on photon. (default: 40000)
+#   --addr value                    tcp address of the sbot to connect to (or listen on) (default: "54.179.3.93:8008")
+#   --remoteKey value               the remote pubkey you are connecting to (by default the local key)
+#   --datadir value                 directory for storing pub's parsing data (default: "$HOME/.ssb-go/pubdata")
+#   --token-address value           which token is used in metalife app,if set,the default will be replaced (default: "0x6601F810eaF2fa749EEa10533Fd4CC23B8C791dc")
+#   --photon-host value             host:port link to the photon service. (default: "127.0.0.1:11001")
+#   --pub-eth-address value         ethereum address the pub 's address is bound for reward.
+#   --settle-timeout value          set settle timeout on photon. (default: 40000)
 #   --service-port value            port' for the metalife service to listen on. (default: 10008)
 #   --message-scan-interval value   the time interval at which messages are scanned and calculated (unit:second). (default: 60)
 #   --min-balance-inchannel value   minimum balance in photon channel between this pub and ssb client (unit: 1e18 wei). (default: 1)
 #   --report-rewarding value        pub will reward the person who provides the report (if the report is true). (unit: 1e15 wei) (default: 0)
 #   --registration-rewarding value  pub will reward the person who provides ethereum address for his ssb client. (unit: 1e15 wei) (default: 0)
+#   --sensitive-words-file value    the path of the sensitive-words file (default: "$HOME/.ssb-go/sensitive.txt")
 
 
 nohup metalifeserver \
@@ -72,10 +73,10 @@ nohup metalifeserver \
  --photon-host 127.0.0.1:11001 \
  --settle-timeout 40000 \
  --service-port 10008 \
- --message-scan-interval 60 \
+ --message-scan-interval 120 \
  --min-balance-inchannel 1 \
- --report-rewarding 0 \
- --registration-rewarding 0 \
+ --report-rewarding 1 \
+ --registration-rewarding 1 \
  > log &
 ```
 

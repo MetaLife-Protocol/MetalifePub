@@ -94,7 +94,7 @@ func Start(ctx *cli.Context) {
 		//tipped off infomation 所有举报的信息汇总
 		rest.Get("/ssb/api/tippedoff-info", GetTippedOffInfo),
 
-		//tipped off infomation 对举报的信息进行处理，认证，如属实，则对该账号进行黑名单处理
+		//tippedoff-deal pub管理员对举报的信息进行处理，认证，如属实，则对该账号进行黑名单处理
 		rest.Post("/ssb/api/tippedoff-deal", DealTippedOff),
 	)
 	if err != nil {
@@ -139,6 +139,10 @@ func TippedOff(w rest.ResponseWriter, r *rest.Request) {
 	var mkey = req.MessageKey
 	var reasons = req.Reasons
 
+	if defendant == params.PubID {
+		resp = NewAPIResponse(err, fmt.Sprintf("Permission denied, from pub : %s", params.PubID))
+		return
+	}
 	var recordtime = time.Now().UnixNano() / 1e6
 	lstid, err := likeDB.InsertViolation(recordtime, plaintiff, defendant, mkey, reasons)
 	if err != nil {
@@ -194,9 +198,10 @@ func DealTippedOff(w rest.ResponseWriter, r *rest.Request) {
 	}
 	if req.DealTag == "1" { ////for table violationrecord, dealtag=0举报 =1属实 =2事实不清,不予处理
 		//1 unfollow and block 'the defendant' and sign him to blacklist
-		err = contactSomeone(nil, req.Defendant, false, true)
+		err = contactSomeone(nil, req.Defendant, true, true)
 		if err != nil {
 			resp = NewAPIResponse(err, fmt.Sprintf("Unfollow and block %s failed", req.Defendant))
+			return
 		}
 		fmt.Println(fmt.Sprintf(PrintTime()+"Success to Unfollow and block %s", req.Defendant))
 
@@ -397,6 +402,9 @@ func DoMessageTask(ctx *cli.Context) {
 }
 
 func contactSomeone(ctx *cli.Context, dealwho string, isfollow, isblock bool) (err error) {
+	if dealwho == params.PubID {
+		return fmt.Errorf("Permission denied, from pub : %s", dealwho)
+	}
 	arg := map[string]interface{}{
 		"contact":   dealwho,
 		"type":      "contact",
@@ -658,9 +666,9 @@ func SsbMessageAnalysis(r *muxrpc.ByteSource) (int64, error) {
 			err = json.Unmarshal(msgStruct.Value.Content, &ccs)
 			if err == nil {
 				if ccs.Type == "contact" {
-					if IsBlackList(ccs.Contact) && ccs.Following && !ccs.Blocking && ccs.Pub {
+					if IsBlackList(ccs.Contact) && ccs.Following && !ccs.Blocking && ccs.Pub && (ccs.Contact != params.PubID) {
 						//block he
-						err = contactSomeone(nil, ccs.Contact, false, true)
+						err = contactSomeone(nil, ccs.Contact, true, true)
 						if err != nil {
 							fmt.Println(fmt.Sprintf(PrintTime()+"[black-list]Unfollow and Block %s FAILED, err=%s", ccs.Contact, err))
 						}
@@ -678,9 +686,9 @@ func SsbMessageAnalysis(r *muxrpc.ByteSource) (int64, error) {
 				if cps.Type == "post" {
 					postContent := cps.Text
 					_, _, b := dfax.Check(postContent)
-					if b {
+					if b && (msgauther != params.PubID) {
 						//block he
-						err = contactSomeone(nil, msgauther, false, true)
+						err = contactSomeone(nil, msgauther, true, true)
 						if err != nil {
 							fmt.Println(fmt.Sprintf(PrintTime()+"[sensitive-check]Unfollow and Block %s FAILED, err=%s", msgauther, err))
 						}
