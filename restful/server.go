@@ -424,6 +424,35 @@ func contactSomeone(ctx *cli.Context, dealwho string, isfollow, isblock bool) (e
 	return
 }
 
+func privatePublish(ctx *cli.Context, recpobj, root, branch string) (err error) {
+	arg := map[string]interface{}{
+		"text": ctx.Args().First(),
+		"type": "post",
+	}
+	if r := ctx.String("root"); r != "" {
+		arg["root"] = r
+		if b := ctx.String("branch"); b != "" {
+			arg["branch"] = b
+		} else {
+			arg["branch"] = r
+		}
+	}
+	var v string
+	if recps := ctx.StringSlice("recps"); len(recps) > 0 {
+		err = client.Async(longCtx, &v,
+			muxrpc.TypeString,
+			muxrpc.Method{"private", "publish"}, arg, recps)
+	} else {
+		err = client.Async(longCtx, &v,
+			muxrpc.TypeString,
+			muxrpc.Method{"publish"}, arg)
+	}
+	if err != nil {
+		return fmt.Errorf("publish call failed: %w", err)
+	}
+	return
+}
+
 // GetPubWhoami
 func GetPubWhoami(w rest.ResponseWriter, r *rest.Request) {
 	var resp *APIResponse
