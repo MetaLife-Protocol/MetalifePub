@@ -54,6 +54,16 @@ CREATE TABLE IF NOT EXISTS "violationrecord" (
    "dealtime" INTEGER NULL,
    "dealreward" TEXT NULL default ''
 );
+CREATE TABLE IF NOT EXISTS "sensitivewordrecord" (
+   "uid" INTEGER PRIMARY KEY AUTOINCREMENT,
+   "pubid" TEXT NULL,
+   "messagescantime" INTEGER NULL,
+   "content" TEXT NULL,
+   "messagekey" TEXT NULL,
+   "author" TEXT NULL,
+   "dealtag" TEXT NULL DEFAULT '0',
+   "dealtime" INTEGER NULL
+);
    `
 	_, err = db.Exec(sql_table)
 	if err != nil {
@@ -410,6 +420,71 @@ func (pdb *PubDB) SelectViolationByWhere(plaintiff, defendant, messagekey, reaso
 			Dealreward: xdealreward,
 		}
 		num = append(num, l)
+	}
+	return
+}
+
+// InsertSensitiveWordRecord dealtag:0-init data 1-right 2-no
+func (pdb *PubDB) InsertSensitiveWordRecord(pubid string, messagetime int64, content, messagekey, author, dealtag string) (lastid int64, err error) {
+	stmt, err := pdb.db.Prepare("INSERT INTO sensitivewordrecord(pubid,messagescantime,content,messagekey,author,dealtag,dealtime) VALUES (?,?,?,?,?,?,0)")
+	if err != nil {
+		return 0, err
+	}
+	res, err := stmt.Exec(pubid, messagetime, content, messagekey, author, dealtag)
+	if err != nil {
+		return 0, err
+	}
+	lastid, err = res.LastInsertId()
+
+	return
+}
+
+// UpdateSensitiveWordRecord
+func (pdb *PubDB) UpdateSensitiveWordRecord(dealtag string, dealtime int64, messagekey string) (affectid int64, err error) {
+	stmt, err := pdb.db.Prepare("update sensitivewordrecord set dealtag=?,dealtime=? where messagekey=?")
+	if err != nil {
+		return 0, err
+	}
+	res, err := stmt.Exec(dealtag, dealtime, messagekey)
+	if err != nil {
+		return 0, err
+	}
+	affectid, err = res.LastInsertId()
+	return
+}
+
+// SelectSensitiveWordRecord
+func (pdb *PubDB) SelectSensitiveWordRecord(selecttag string) (eventsSensitiveWord []*EventSensitive, err error) {
+	rows, err := pdb.db.Query("SELECT * FROM sensitivewordrecord where dealtag=?", selecttag)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var xpubid string
+		var xmessagescantime int64
+		var xcontent string
+		var xmessagekey string
+		var xauthor string
+		var xdealtag string
+		var xdealtime int64
+
+		errnil := rows.Scan(&xpubid, &xmessagescantime, &xcontent, &xmessagekey, &xauthor, &xdealtag, &xdealtime)
+		if errnil != nil {
+			continue
+			//return nil, err
+		}
+		var e *EventSensitive
+		e = &EventSensitive{
+			PubID:           xpubid,
+			MessageScanTime: xmessagescantime,
+			MessageText:     xcontent,
+			MessageKey:      xmessagekey,
+			MessageAuthor:   xauthor,
+			DealTag:         xdealtag,
+			DealTime:        xdealtime,
+		}
+		eventsSensitiveWord = append(eventsSensitiveWord, e)
 	}
 	return
 }

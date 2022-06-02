@@ -49,8 +49,8 @@ type ContentContactStru struct {
 	Type      string `json:"type"`
 	Contact   string `json:"contact"`
 	Following bool   `json:"following"`
-	Blocking  bool   `json:"blocking"`
-	Pub       bool   `json:"pub"`
+	//Blocking  bool   `json:"blocking"`
+	Pub bool `json:"pub"`
 }
 
 // TippedOff reasons:"xxx|xxx|xxx"
@@ -116,3 +116,14 @@ type Whoami struct {
 
 // SensitiveWords
 var SensitiveWords []string
+
+// EventSensitive
+type EventSensitive struct {
+	PubID           string `json:"pub_id"`
+	MessageScanTime int64  `json:"message_scan_time"`
+	MessageText     string `json:"message_text"`
+	MessageKey      string `json:"message_key"`
+	MessageAuthor   string `json:"message_author"`
+	DealTag         string `json:"deal_tag"`
+	DealTime        int64  `json:"deal_time"`
+}

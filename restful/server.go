@@ -96,6 +96,12 @@ func Start(ctx *cli.Context) {
 
 		//tippedoff-deal pub管理员对举报的信息进行处理，认证，如属实，则对该账号进行黑名单处理
 		rest.Post("/ssb/api/tippedoff-deal", DealTippedOff),
+
+		//DealSensitiveWord pub管理对敏感词的处理/block or ignore
+		rest.Post("/ssb/api/sensitive-word-deal", DealSensitiveWord),
+
+		//get all sensitive-word-events from pub
+		rest.Post("/ssb/api/sensitive-word-events", GetEventSensitiveWord),
 	)
 	if err != nil {
 		level.Error(log).Log("make router err", err)
@@ -118,6 +124,61 @@ func Start(ctx *cli.Context) {
 	if err != nil {
 		fmt.Println(fmt.Sprintf(PrintTime()+"API restful service Shutdown err : %s", err))
 	}
+}
+
+// GetEventSensitiveWord
+func GetEventSensitiveWord(w rest.ResponseWriter, r *rest.Request) {
+	var resp *APIResponse
+	defer func() {
+		fmt.Println(fmt.Sprintf(PrintTime()+"Restful Api Call ----> GetEventSensitiveWord ,err=%s", resp.ErrorMsg))
+		writejson(w, resp)
+	}()
+	var req EventSensitive
+	err := r.DecodeJsonPayload(&req)
+	if err != nil {
+		rest.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	var tag = req.DealTag
+	senvents, err := likeDB.SelectSensitiveWordRecord(tag)
+	resp = NewAPIResponse(err, senvents)
+}
+
+// DealSensitiveWord
+func DealSensitiveWord(w rest.ResponseWriter, r *rest.Request) {
+	var resp *APIResponse
+	defer func() {
+		fmt.Println(fmt.Sprintf(PrintTime()+"Restful Api Call ----> DealSensitiveWord ,err=%s", resp.ToFormatString()))
+		writejson(w, resp)
+	}()
+
+	var req EventSensitive
+	err := r.DecodeJsonPayload(&req)
+	if err != nil {
+		rest.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	var msgkey = req.MessageKey
+	var dealtag = req.DealTag
+	var dealtime = time.Now().UnixNano() / 1e6
+	var author = req.MessageAuthor
+	_, err = likeDB.UpdateSensitiveWordRecord(dealtag, dealtime, msgkey)
+	if err != nil {
+		rest.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if req.DealTag == "1" { ////for table sensitivewordrecord, dealtag=0初始化  =1属实 =2否定
+		// block 'the author who publish sensitive word' ONCE
+		err = contactSomeone(nil, author, true, true)
+		if err != nil {
+			resp = NewAPIResponse(err, fmt.Sprintf("block %s failed", author))
+			return
+		}
+		fmt.Println(fmt.Sprintf(PrintTime()+"Success to block %s", author))
+	}
+	resp = NewAPIResponse(err, "success")
 }
 
 // TippedOff
@@ -690,22 +751,24 @@ func SsbMessageAnalysis(r *muxrpc.ByteSource) (int64, error) {
 				fmt.Println(fmt.Sprintf(PrintTime()+"Unmarshal for about , err %v", err))
 			}
 
-			//4、contact触发对blakclist的处理
-			ccs := ContentContactStru{}
-			err = json.Unmarshal(msgStruct.Value.Content, &ccs)
-			if err == nil {
-				if ccs.Type == "contact" {
-					if IsBlackList(ccs.Contact) && ccs.Following && !ccs.Blocking && ccs.Pub && (ccs.Contact != params.PubID) {
-						//block he
-						err = contactSomeone(nil, ccs.Contact, true, true)
-						if err != nil {
-							fmt.Println(fmt.Sprintf(PrintTime()+"[black-list]Unfollow and Block %s FAILED, err=%s", ccs.Contact, err))
+			//4、contact触发对blakclist的处理, 通过pub关注重新进来的黑名单的消息来持续block该账户
+			if msgauther == params.PubID {
+				ccs := ContentContactStru{}
+				err = json.Unmarshal(msgStruct.Value.Content, &ccs)
+				if err == nil {
+					if ccs.Type == "contact" {
+						if IsBlackList(ccs.Contact) && ccs.Following && ccs.Pub {
+							//block he
+							err = contactSomeone(nil, ccs.Contact, true, true)
+							if err != nil {
+								fmt.Println(fmt.Sprintf(PrintTime()+"[black-list]Unfollow and Block %s FAILED, err=%s", ccs.Contact, err))
+							}
+							fmt.Println(fmt.Sprintf(PrintTime()+"[black-list]Unfollow and Block %s SUCCESS", ccs.Contact))
 						}
-						fmt.Println(fmt.Sprintf(PrintTime()+"[black-list]Unfollow and Block %s SUCCESS", ccs.Contact))
 					}
+				} else {
+					fmt.Println(fmt.Sprintf(PrintTime()+"[black-list]Unmarshal for contact, err %v", err))
 				}
-			} else {
-				fmt.Println(fmt.Sprintf(PrintTime()+"[black-list]Unmarshal for contact , err %v", err))
 			}
 
 			//5、敏感词处理
@@ -716,12 +779,19 @@ func SsbMessageAnalysis(r *muxrpc.ByteSource) (int64, error) {
 					postContent := cps.Text
 					_, _, b := dfax.Check(postContent)
 					if b && (msgauther != params.PubID) {
-						//block he
+						/*//block he
 						err = contactSomeone(nil, msgauther, true, true)
 						if err != nil {
 							fmt.Println(fmt.Sprintf(PrintTime()+"[sensitive-check]Unfollow and Block %s FAILED, err=%s", msgauther, err))
 						}
-						fmt.Println(fmt.Sprintf(PrintTime()+"[sensitive-check]Unfollow and Block %s SUCCESS", msgauther))
+						fmt.Println(fmt.Sprintf(PrintTime()+"[sensitive-check]Unfollow and Block %s SUCCESS", msgauther))*/
+						//fix:处理违规消息由 "直接block" 转为 "提供接口人工审核处理"
+						_, err = likeDB.InsertSensitiveWordRecord(params.PubID, nowUnixTime, postContent, msgkey, msgauther, "0")
+						if err != nil {
+							fmt.Println(fmt.Sprintf(PrintTime()+"[sensitive-check]InsertSensitiveWordRecord FAILED, err=%s", err))
+						}
+						//...to go to pub api
+
 					}
 				}
 			}
