@@ -328,6 +328,66 @@ Response e.g:
 }
 ```
 
+10.get the message containing sensitive words preliminarily detected by pub
+
+```bash
+POST http://{ssb-server-public-ip}:18008/ssb/api/sensitive-word-events
+```
+Body: (dealtag:0-init, 1-message contain some sensitive word, 2-things didn't turn out like that)
+```json
+{
+    "deal_tag":"0"
+}
+```
+Response e.g: 
+```json
+{
+    "error_code": 0,
+    "error_message": "SUCCESS",
+    "data": [
+            {
+                "pub_id": "@HZnU6wM+F17J0RSLXP05x3Lag2jGv3F3LzHMjh72coE=.ed25519",
+                "message_scan_time": 1654676435575,
+                "message_text": " Fu +ck",
+                "message_key": "%wVdd0jphnuOBOsFQesV+xvoj7SrFcgN3SfEFShsOKrA=.sha256",
+                "message_author": "@9I5SiHMp4uEFrev7FyG9G2fgGAamZlqstzjA8OiVY6k=.ed25519",
+                "deal_tag": "0",
+                "deal_time": 0
+            },
+            {
+                "pub_id": "@HZnU6wM+F17J0RSLXP05x3Lag2jGv3F3LzHMjh72coE=.ed25519",
+                "message_scan_time": 1654678260253,
+                "message_text": "Fuc::;;k",
+                "message_key": "%EbPIJmQT1RI0fIIbNm9InG7K7RqFTOMI4hX58JqgtRY=.sha256",
+                "message_author": "@9I5SiHMp4uEFrev7FyG9G2fgGAamZlqstzjA8OiVY6k=.ed25519",
+                "deal_tag": "0",
+                "deal_time": 0
+            }
+    ]
+}
+```
+11.the pub administrator makes a judgment on the message suspected of violating the provisions of sensitive words
+
+```bash
+POST http://{ssb-server-public-ip}:18008/ssb/api/sensitive-word-deal
+```
+Body: (dealtag:0-init, 1-message contain some sensitive word, 2-things didn't turn out like that, if dealtag="2", pub will block the author)
+```json
+{
+    "message_key": "%Pz53G0pJENKF7sDShpQQ5Mf6DNIQYPpkf2ZibcVyP0Q=.sha256",
+    "deal_tag": "2"
+}
+```
+Response e.g: 
+```json
+{
+    "error_code": 0,
+    "error_message": "SUCCESS",
+    "data": "success"
+}
+```
+
+
 3.Channel establishment and pre-deposit service  
 After receiving the ETH address registration message, the  MetaLife server will actively establish a channel with the client to obtain rewards , on Spectrum Main Chain.
 

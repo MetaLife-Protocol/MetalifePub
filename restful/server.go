@@ -790,6 +790,7 @@ func SsbMessageAnalysis(r *muxrpc.ByteSource) (int64, error) {
 						if err != nil {
 							fmt.Println(fmt.Sprintf(PrintTime()+"[sensitive-check]InsertSensitiveWordRecord FAILED, err=%s", err))
 						}
+						fmt.Println(fmt.Sprintf(PrintTime()+"[sensitive-check]InsertSensitiveWordRecord SUCCESS, author=%s, message=%s, msgkey=%s", msgauther, postContent, msgkey))
 						//...to go to pub api
 
 					}

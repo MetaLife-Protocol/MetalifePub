@@ -461,6 +461,7 @@ func (pdb *PubDB) SelectSensitiveWordRecord(selecttag string) (eventsSensitiveWo
 	}
 	defer rows.Close()
 	for rows.Next() {
+		var xuid int64
 		var xpubid string
 		var xmessagescantime int64
 		var xcontent string
@@ -469,7 +470,7 @@ func (pdb *PubDB) SelectSensitiveWordRecord(selecttag string) (eventsSensitiveWo
 		var xdealtag string
 		var xdealtime int64
 
-		errnil := rows.Scan(&xpubid, &xmessagescantime, &xcontent, &xmessagekey, &xauthor, &xdealtag, &xdealtime)
+		errnil := rows.Scan(&xuid, &xpubid, &xmessagescantime, &xcontent, &xmessagekey, &xauthor, &xdealtag, &xdealtime)
 		if errnil != nil {
 			continue
 			//return nil, err
