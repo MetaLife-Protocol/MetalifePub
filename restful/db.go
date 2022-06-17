@@ -2,9 +2,10 @@ package restful
 
 import (
 	"database/sql"
+	"sync"
+
 	_ "github.com/mattn/go-sqlite3"
 	"go.cryptoscope.co/ssb/restful/params"
-	"sync"
 )
 
 // PubDB init
@@ -63,6 +64,18 @@ CREATE TABLE IF NOT EXISTS "sensitivewordrecord" (
    "author" TEXT NULL,
    "dealtag" TEXT NULL DEFAULT '0',
    "dealtime" INTEGER NULL
+);
+CREATE TABLE IF NOT EXISTS "usertaskcollect" (
+   "uid" INTEGER PRIMARY KEY AUTOINCREMENT,
+   "collectfrompub" TEXT NULL,
+   "author" TEXT NULL,
+   "messagekey" TEXT NULL,
+   "messagetype" TEXT NULL,
+   "messageroot" TEXT NULL,
+   "messagetime" INTEGER NULL
+   "nfttxhash" TEXT NULL,
+   "nfttokenid" TEXT NULL,
+   "nftstoreurl" TEXT NULL,
 );
    `
 	_, err = db.Exec(sql_table)
@@ -486,6 +499,62 @@ func (pdb *PubDB) SelectSensitiveWordRecord(selecttag string) (eventsSensitiveWo
 			DealTime:        xdealtime,
 		}
 		eventsSensitiveWord = append(eventsSensitiveWord, e)
+	}
+	return
+}
+
+// InsertSensitiveWordRecord messagetype:1-登录 2-发表帖子 3-评论 4-铸造NFT
+func (pdb *PubDB) InsertUserTaskCollect(pubid, author, messagekey, messagetype, messageroot string, messagetime int64, nfttxhash, nfttokenid, nftstoreurl string) (lastid int64, err error) {
+	stmt, err := pdb.db.Prepare("INSERT INTO usertaskcollect(collectfrompub,author,messagekey,messagetype,messageroot,messagetime,nfttxhash,nfttokenid,nftstoreurl) VALUES (?,?,?,?,?,?,?,?,?)")
+	if err != nil {
+		return 0, err
+	}
+	res, err := stmt.Exec(pubid, author, messagekey, messagetype, messageroot, messagetime, nfttxhash, nfttokenid, nftstoreurl)
+	if err != nil {
+		return 0, err
+	}
+	lastid, err = res.LastInsertId()
+
+	return
+}
+
+// GetUserTaskCollect
+func (pdb *PubDB) GetUserTaskCollect(author, messagetype string, starttime, endtime int64) (usertasks []*UserTasks, err error) {
+	rows, err := pdb.db.Query("SELECT * FROM usertaskcollect WHERE author=? AND messagetype=? AND messagetime>=? AND messagetime<=?", usertasks, messagetype, starttime, endtime)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var xuid int64
+		var collectfrompub string
+		var author string
+		var messagekey string
+		var messagetype string
+		var messageroot string
+		var messagetime int64
+		var nfttxhash string
+		var nfttokenid string
+		var nftstoreurl string
+
+		errnil := rows.Scan(&xuid, &collectfrompub, &author, &messagekey, &messagetype, &messageroot, &messagetime, &nfttxhash, &nfttokenid, &nftstoreurl)
+		if errnil != nil {
+			continue
+			//return nil, err
+		}
+		var e *UserTasks
+		e = &UserTasks{
+			CollectFromPub: collectfrompub,
+			Author:         author,
+			MessageKey:     messagekey,
+			MessageType:    messagetype,
+			MessageRoot:    messageroot,
+			MessageTime:    messagetime,
+			NfttxHash:      nfttxhash,
+			NftTokenId:     nfttokenid,
+			NftStoredUrl:   nftstoreurl,
+		}
+		usertasks = append(usertasks, e)
 	}
 	return
 }

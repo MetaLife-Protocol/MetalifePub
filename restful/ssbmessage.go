@@ -2,8 +2,9 @@ package restful
 
 import (
 	"encoding/json"
-	"go.mindeco.de/ssb-refs"
 	"time"
+
+	refs "go.mindeco.de/ssb-refs"
 )
 
 type MessageValue struct {
@@ -81,8 +82,11 @@ type ContentAboutStru struct {
 
 // ContentPostStru
 type ContentPostStru struct {
-	Type string `json:"type"`
-	Text string `json:"text"`
+	Type     string `json:"type"`
+	Text     string `json:"text"`
+	Root     string `json:"root"`
+	Mentions string `json:"mentions"`
+	Branch   string `json:"branch"`
 }
 
 // LasterNumLikes
@@ -126,4 +130,41 @@ type EventSensitive struct {
 	MessageAuthor   string `json:"message_author"`
 	DealTag         string `json:"deal_tag"`
 	DealTime        int64  `json:"deal_time"`
+}
+
+// UserTasks
+type UserTasks struct {
+	CollectFromPub string `json:"pub_id"`
+	Author         string `json:"author"`
+	MessageKey     string `json:"message_key"`
+	MessageType    string `json:"message_type"`
+	MessageRoot    string `json:"message_root"`
+	MessageTime    int64  `json:"message_time"`
+
+	NfttxHash    string `json:"nft_tx_hash"`
+	NftTokenId   string `json:"nft_token_id"`
+	NftStoredUrl string `json:"nft_store_url"`
+}
+
+// ReqUserTask
+type ReqUserTask struct {
+	Author      string `json:"author"`
+	MessageType string `json:"message_type"`
+	StartTime   int64  `json:"start_time"`
+	EndTime     int64  `json:"end_time"`
+}
+
+// ReqUserLoginApp
+type ReqUserLoginApp struct {
+	ClientID  string `json:"client_id"`
+	LoginTime int64  `json:"login_time"`
+}
+
+// ReqCreatedNFT
+type ReqCreatedNFT struct {
+	ClientID       string `json:"client_id"`
+	NftCreatedTime int64  `json:"nft_created_time"`
+	NfttxHash      string `json:"nft_tx_hash"`
+	NftTokenId     string `json:"nft_token_id"`
+	NftStoredUrl   string `json:"nft_store_url"`
 }

@@ -6,6 +6,13 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
+	"math/big"
+	"net"
+	"net/http"
+	"strings"
+	"time"
+
 	"github.com/ant0ine/go-json-rest/rest"
 	"go.cryptoscope.co/muxrpc/v2"
 	"go.cryptoscope.co/netwrap"
@@ -16,21 +23,19 @@ import (
 	"go.mindeco.de/log/level"
 	"golang.org/x/crypto/ed25519"
 	"gopkg.in/urfave/cli.v2"
-	"io"
-	"math/big"
-	"net"
-	"net/http"
-	"strings"
-	"time"
+
 	/*"go.cryptoscope.co/ssb/message"
 	"go.mindeco.de/ssb-refs"*/
 
 	"bufio"
+	"os"
+
+	"math"
+
 	"go.cryptoscope.co/ssb"
 	"go.cryptoscope.co/ssb/dfa"
 	"go.cryptoscope.co/ssb/message"
-	"go.mindeco.de/ssb-refs"
-	"os"
+	refs "go.mindeco.de/ssb-refs"
 )
 
 var Config *params.ApiConfig
@@ -102,6 +107,16 @@ func Start(ctx *cli.Context) {
 
 		//get all sensitive-word-events from pub
 		rest.Post("/ssb/api/sensitive-word-events", GetEventSensitiveWord),
+
+		//get some user daily task infos from pub,
+		//a message may appear in multiple pubs, and the client removes redundant data through messagekey and pub id
+		rest.Post("/ssb/api/get-user-daily-task", GetUserDailyTasks),
+
+		//notify pub the login infomation, pub will collect through this interface
+		rest.Post("/ssb/api/notify-login", NotifyUserLogin),
+
+		//[temporary scheme] notify the pub that user have created a NFT in metalife app
+		rest.Post("/ssb/api/notify-created-nft", NotifyCreatedNFT),
 	)
 	if err != nil {
 		level.Error(log).Log("make router err", err)
@@ -124,171 +139,6 @@ func Start(ctx *cli.Context) {
 	if err != nil {
 		fmt.Println(fmt.Sprintf(PrintTime()+"API restful service Shutdown err : %s", err))
 	}
-}
-
-// GetEventSensitiveWord
-func GetEventSensitiveWord(w rest.ResponseWriter, r *rest.Request) {
-	var resp *APIResponse
-	defer func() {
-		fmt.Println(fmt.Sprintf(PrintTime()+"Restful Api Call ----> GetEventSensitiveWord ,err=%s", resp.ErrorMsg))
-		writejson(w, resp)
-	}()
-	var req EventSensitive
-	err := r.DecodeJsonPayload(&req)
-	if err != nil {
-		rest.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	var tag = req.DealTag
-	senvents, err := likeDB.SelectSensitiveWordRecord(tag)
-	resp = NewAPIResponse(err, senvents)
-}
-
-// DealSensitiveWord
-func DealSensitiveWord(w rest.ResponseWriter, r *rest.Request) {
-	var resp *APIResponse
-	defer func() {
-		fmt.Println(fmt.Sprintf(PrintTime()+"Restful Api Call ----> DealSensitiveWord ,err=%s", resp.ToFormatString()))
-		writejson(w, resp)
-	}()
-
-	var req EventSensitive
-	err := r.DecodeJsonPayload(&req)
-	if err != nil {
-		rest.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	var msgkey = req.MessageKey
-	var dealtag = req.DealTag
-	var dealtime = time.Now().UnixNano() / 1e6
-	var author = req.MessageAuthor
-	_, err = likeDB.UpdateSensitiveWordRecord(dealtag, dealtime, msgkey)
-	if err != nil {
-		rest.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if req.DealTag == "1" { ////for table sensitivewordrecord, dealtag=0初始化  =1属实 =2否定
-		// block 'the author who publish sensitive word' ONCE
-		err = contactSomeone(nil, author, true, true)
-		if err != nil {
-			resp = NewAPIResponse(err, fmt.Sprintf("block %s failed", author))
-			return
-		}
-		fmt.Println(fmt.Sprintf(PrintTime()+"Success to block %s", author))
-	}
-	resp = NewAPIResponse(err, "success")
-}
-
-// TippedOff
-func TippedOff(w rest.ResponseWriter, r *rest.Request) {
-	var resp *APIResponse
-	defer func() {
-		fmt.Println(fmt.Sprintf(PrintTime()+"Restful Api Call ----> TippedWhoOff ,err=%s", resp.ToFormatString()))
-		writejson(w, resp)
-	}()
-	var req TippedOffStu
-	err := r.DecodeJsonPayload(&req)
-	if err != nil {
-		rest.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	var plaintiff = req.Plaintiff
-	var defendant = req.Defendant
-	var mkey = req.MessageKey
-	var reasons = req.Reasons
-
-	if defendant == params.PubID {
-		resp = NewAPIResponse(err, fmt.Sprintf("Permission denied, from pub : %s", params.PubID))
-		return
-	}
-	var recordtime = time.Now().UnixNano() / 1e6
-	lstid, err := likeDB.InsertViolation(recordtime, plaintiff, defendant, mkey, reasons)
-	if err != nil {
-		rest.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if lstid == -1 {
-		resp = NewAPIResponse(err, "You've already reported it, thank your again👍")
-		return
-	}
-
-	resp = NewAPIResponse(err, "Success, the pub administrator will verify as soon as possible, thank you for your report👍")
-}
-
-// TippedOffInfo get infos
-func GetTippedOffInfo(w rest.ResponseWriter, r *rest.Request) {
-	var resp *APIResponse
-	defer func() {
-		//fmt.Println(fmt.Sprintf("Restful Api Call ----> GetTippedOffInfo ,err=%s", resp.ToFormatString()))
-		fmt.Println(fmt.Sprintf(PrintTime()+"Restful Api Call ----> GetTippedOffInfo ,err=%s", resp.ErrorMsg))
-		writejson(w, resp)
-	}()
-	var req TippedOffStu
-	err := r.DecodeJsonPayload(&req)
-	if err != nil {
-		rest.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	datas, err := likeDB.SelectViolationByWhere(req.Plaintiff, req.Defendant, req.MessageKey, req.Reasons, req.DealTag)
-
-	resp = NewAPIResponse(err, datas)
-}
-
-// DealTippedOff
-func DealTippedOff(w rest.ResponseWriter, r *rest.Request) {
-	var resp *APIResponse
-	defer func() {
-		fmt.Println(fmt.Sprintf(PrintTime()+"Restful Api Call ----> DealTippedOff ,err=%s", resp.ToFormatString()))
-		writejson(w, resp)
-	}()
-	var req TippedOffStu
-	err := r.DecodeJsonPayload(&req)
-	if err != nil {
-		rest.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	var dtime = time.Now().UnixNano() / 1e6
-	_, err = likeDB.UpdateViolation(req.DealTag, dtime, req.Dealreward, req.Plaintiff, req.Defendant, req.MessageKey)
-	if err != nil {
-		rest.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if req.DealTag == "1" { ////for table violationrecord, dealtag=0举报 =1属实 =2事实不清,不予处理
-		//1 unfollow and block 'the defendant' and sign him to blacklist
-		err = contactSomeone(nil, req.Defendant, true, true)
-		if err != nil {
-			resp = NewAPIResponse(err, fmt.Sprintf("Unfollow and block %s failed", req.Defendant))
-			return
-		}
-		fmt.Println(fmt.Sprintf(PrintTime()+"Success to Unfollow and block %s", req.Defendant))
-
-		//2 pub另行支付给‘the plaintiff’发token
-		name2addr, err := GetNodeProfile(req.Plaintiff)
-		if err != nil || len(name2addr) != 1 {
-			resp = NewAPIResponse(fmt.Errorf("DealTippedOff-Get plaintiff's ethereum address failed, err= not found or %s", err), "failed")
-			return
-		}
-		addrPlaintiff := name2addr[0].EthAddress
-
-		err = sendToken(addrPlaintiff, int64(params.ReportRewarding), true, false)
-		if err != nil {
-			resp = NewAPIResponse(fmt.Errorf("DealTippedOff-Failed to Award to %s for ReportRewarding,err= %s", req.Plaintiff, err), "failed")
-			return
-		}
-		_, err = likeDB.UpdateViolation(req.DealTag, dtime, fmt.Sprintf("%d%s", params.ReportRewarding, "e15-"), req.Plaintiff, req.Defendant, req.MessageKey)
-		if err != nil {
-			rest.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		resp = NewAPIResponse(err, fmt.Sprintf("success, [%s] has been block by [pub administrator], and pub send award token to [%s]", req.Defendant, req.Plaintiff))
-		return
-	}
-	resp = NewAPIResponse(err, "success")
 }
 
 // newClient creat a client link to ssb-server
@@ -514,152 +364,6 @@ func privatePublish(ctx *cli.Context, recpobj, root, branch string) (err error) 
 	return
 }
 
-// GetPubWhoami
-func GetPubWhoami(w rest.ResponseWriter, r *rest.Request) {
-	var resp *APIResponse
-	defer func() {
-		fmt.Println(fmt.Sprintf(PrintTime()+"Restful Api Call ----> GetPubWhoami ,err=%s", resp.ToFormatString()))
-		writejson(w, resp)
-	}()
-
-	pinfo := &Whoami{}
-	pinfo.Pub_Id = params.PubID
-	pinfo.Pub_Eth_Address = params.PhotonAddress
-	resp = NewAPIResponse(nil, pinfo)
-	return
-}
-
-// clientid2Profile
-func clientid2Profiles(w rest.ResponseWriter, r *rest.Request) {
-	var resp *APIResponse
-	defer func() {
-		fmt.Println(fmt.Sprintf(PrintTime()+"Restful Api Call ----> node-infos ,err=%s", resp.ErrorMsg))
-		writejson(w, resp)
-	}()
-
-	name2addr, err := GetAllNodesProfile()
-	resp = NewAPIResponse(err, name2addr)
-	return
-}
-
-// clientid2Profile
-func clientid2Profile(w rest.ResponseWriter, r *rest.Request) {
-	var resp *APIResponse
-	defer func() {
-		fmt.Println(fmt.Sprintf(PrintTime()+"Restful Api Call ----> node-infos ,err=%s", resp.ErrorMsg))
-		writejson(w, resp)
-	}()
-	var req Name2ProfileReponse
-	err := r.DecodeJsonPayload(&req)
-	if err != nil {
-		rest.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	var cid = req.ID
-	name2addr, err := GetNodeProfile(cid)
-	resp = NewAPIResponse(err, name2addr)
-}
-
-//UpdateEthAddr
-func UpdateEthAddr(w rest.ResponseWriter, r *rest.Request) {
-	var resp *APIResponse
-	defer func() {
-		fmt.Println(fmt.Sprintf(PrintTime()+"Restful Api Call ----> UpdateEthAddr ,err=%s", resp.ToFormatString()))
-		writejson(w, resp)
-	}()
-	var req = &Name2ProfileReponse{}
-	err := r.DecodeJsonPayload(req)
-	if err != nil {
-		rest.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	_, err = HexToAddress(req.EthAddress)
-	if err != nil {
-		resp = NewAPIResponse(err, nil)
-		return
-	}
-	_, err = likeDB.UpdateUserProfile(req.ID, req.Name, req.EthAddress)
-	if err != nil {
-		rest.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	//和客户端建立一个奖励通道
-	err = ChannelDeal(req.EthAddress)
-	if err != nil {
-		resp = NewAPIResponse(fmt.Errorf("fail to create a channel to %s, because %s", req.EthAddress, err), nil)
-		return
-	}
-	resp = NewAPIResponse(err, "success")
-}
-
-// GetAllNodesProfile
-func GetAllNodesProfile() (datas []*Name2ProfileReponse, err error) {
-	profiles, err := likeDB.SelectUserProfile("")
-	if err != nil {
-		fmt.Println(fmt.Sprintf(PrintTime()+"Failed to db-SelectUserProfileAll", err))
-		return
-	}
-	datas = profiles
-	return
-}
-
-// GetNodeProfile
-func GetNodeProfile(cid string) (datas []*Name2ProfileReponse, err error) {
-	profile, err := likeDB.SelectUserProfile(cid)
-	if err != nil {
-		fmt.Println(fmt.Sprintf(PrintTime()+"Failed to db-SelectUserEthAddrAll", err))
-		return
-	}
-	datas = profile
-	return
-}
-
-// GetAllLikes
-func GetAllLikes(w rest.ResponseWriter, r *rest.Request) {
-	var resp *APIResponse
-	defer func() {
-		fmt.Println(fmt.Sprintf(PrintTime()+"Restful Api Call ----> GetAllLikes ,err=%s", resp.ErrorMsg))
-		writejson(w, resp)
-	}()
-
-	likes, err := CalcGetLikeSum("")
-
-	resp = NewAPIResponse(err, likes)
-}
-
-// GetSomeoneLike
-func GetSomeoneLike(w rest.ResponseWriter, r *rest.Request) {
-	var resp *APIResponse
-	defer func() {
-		fmt.Println(fmt.Sprintf(PrintTime()+"Restful Api Call ----> GetSomeoneLike ,err=%s", resp.ErrorMsg))
-		writejson(w, resp)
-	}()
-	var req Name2ProfileReponse
-	err := r.DecodeJsonPayload(&req)
-	if err != nil {
-		rest.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	var cid = req.ID
-	like, err := CalcGetLikeSum(cid)
-	resp = NewAPIResponse(err, like)
-}
-
-// GetAllNodesProfile
-func CalcGetLikeSum(someoneOrAll string) (datas map[string]*LasterNumLikes, err error) {
-	likes, err := likeDB.SelectLikeSum(someoneOrAll)
-	if err != nil {
-		fmt.Println(fmt.Sprintf(PrintTime()+"Failed to db-SelectLikeSum", err))
-		return
-	}
-	datas = likes
-	return
-}
-
 func SsbMessageAnalysis(r *muxrpc.ByteSource) (int64, error) {
 	var buf = &bytes.Buffer{}
 	TempMsgMap = make(map[string]*TempdMessage)
@@ -699,6 +403,7 @@ func SsbMessageAnalysis(r *muxrpc.ByteSource) (int64, error) {
 		//1、记录本轮所有消息ID和author的关系,保存下来,被点赞的消息基本不会在本轮被扫描到
 		msgkey := fmt.Sprintf("%v", msgStruct.Key)
 		msgauther := fmt.Sprintf("%v", msgStruct.Value.Author)
+		var msgSendTime = msgStruct.Value.Timestamp
 		TempMsgMap[msgkey] = &TempdMessage{
 			Author: msgauther,
 		}
@@ -771,12 +476,13 @@ func SsbMessageAnalysis(r *muxrpc.ByteSource) (int64, error) {
 				}
 			}
 
-			//5、敏感词处理
+			//5、POST Message
 			cps := ContentPostStru{}
 			err = json.Unmarshal(msgStruct.Value.Content, &cps)
 			if err == nil {
 				if cps.Type == "post" {
 					postContent := cps.Text
+					//5.1敏感词处理
 					_, _, b := dfax.Check(postContent)
 					if b && (msgauther != params.PubID) {
 						/*//block he
@@ -791,8 +497,25 @@ func SsbMessageAnalysis(r *muxrpc.ByteSource) (int64, error) {
 							fmt.Println(fmt.Sprintf(PrintTime()+"[sensitive-check]InsertSensitiveWordRecord FAILED, err=%s", err))
 						}
 						fmt.Println(fmt.Sprintf(PrintTime()+"[sensitive-check]InsertSensitiveWordRecord SUCCESS, author=%s, message=%s, msgkey=%s", msgauther, postContent, msgkey))
-						//...to go to pub api
-
+						//...to go to pub api to deal
+					}
+					//5.2我发表的invitation
+					fmt.Printf("***********" + cps.Root)
+					var authorSendTime = int64(msgSendTime*math.Pow10(2)) / 100
+					if cps.Root == "" { //1-登录 2-发表帖子 3-评论 4-铸造NFT
+						_, err = likeDB.InsertUserTaskCollect(params.PubID, msgauther, msgkey, "2", "", authorSendTime, "", "", "")
+						if err != nil {
+							fmt.Println(fmt.Sprintf(PrintTime()+"[UserTaskCollect-2]InsertUserTaskCollect FAILED, err=%s", err))
+						}
+						fmt.Println(fmt.Sprintf(PrintTime()+"[UserTaskCollect-2]InsertUserTaskCollect SUCCESS, author=%s, msgkey=%s", msgauther, msgkey))
+					}
+					//5.2我发表的comment
+					if strings.Index(cps.Root, "%") == 0 {
+						_, err = likeDB.InsertUserTaskCollect(params.PubID, msgauther, msgkey, "3", cps.Root, authorSendTime, "", "", "")
+						if err != nil {
+							fmt.Println(fmt.Sprintf(PrintTime()+"[UserTaskCollect-3]InsertUserTaskCollect FAILED, err=%s", err))
+						}
+						fmt.Println(fmt.Sprintf(PrintTime()+"[UserTaskCollect-3]InsertUserTaskCollect SUCCESS, author=%s, msgkey=%s", msgauther, msgkey))
 					}
 				}
 			}
