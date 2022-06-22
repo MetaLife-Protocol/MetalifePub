@@ -282,7 +282,7 @@ func (pdb *PubDB) UpdateLikeDetail(liketag int, ts int64, msgid string) (affecti
 }
 
 //SelectLastScanTime
-func (pdb *PubDB) SelectLikeSum(clientid string) (likesum map[string]*LasterNumLikes, err error) { ////LikeCountMap = make(map[string]*LasterNumLikes)
+func (pdb *PubDB) SelectLikeSum(clientid string) (likesum map[string]*LasterNumLikes, err error) {
 	var rows *sql.Rows
 	if clientid == "" {
 		rows, err = pdb.db.Query("SELECT likedetail.author,likedetail.thismsglikesum,userprofile.clientname,userprofile.other1 FROM likedetail left outer join userprofile on likedetail.author=userprofile.clientid")
@@ -520,13 +520,39 @@ func (pdb *PubDB) InsertUserTaskCollect(pubid, author, messagekey, messagetype, 
 
 // GetUserTaskCollect
 func (pdb *PubDB) GetUserTaskCollect(author, messagetype string, starttime, endtime int64) (usertasks []*UserTasks, err error) {
-	rows, err := pdb.db.Query("SELECT * FROM usertaskcollect WHERE author=? AND messagetype=? AND messagetime>=? AND messagetime<=?", usertasks, messagetype, starttime, endtime)
+	var rows *sql.Rows
+	if author != "" {
+		rows, err = pdb.db.Query("SELECT usertaskcollect.collectfrompub,"+
+			"usertaskcollect.author,"+
+			"usertaskcollect.messagekey,"+
+			"usertaskcollect.messagetype,"+
+			"usertaskcollect.messageroot,"+
+			"usertaskcollect.messagetime,"+
+			"usertaskcollect.nfttxhash,"+
+			"usertaskcollect.nfttokenid,"+
+			"usertaskcollect.nftstoreurl,"+
+			"userprofile.other1 "+
+			"FROM usertaskcollect left outer join userprofile on usertaskcollect.author=userprofile.clientid "+
+			"WHERE usertaskcollect.author=? AND usertaskcollect.messagetype=? AND usertaskcollect.messagetime>=? AND usertaskcollect.messagetime<=?", author, messagetype, starttime, endtime)
+	} else {
+		rows, err = pdb.db.Query("SELECT usertaskcollect.collectfrompub,"+
+			"usertaskcollect.author,"+
+			"usertaskcollect.messagekey,"+
+			"usertaskcollect.messagetype,"+
+			"usertaskcollect.messageroot,"+
+			"usertaskcollect.messagetime,"+
+			"usertaskcollect.nfttxhash,"+
+			"usertaskcollect.nfttokenid,"+
+			"usertaskcollect.nftstoreurl,"+
+			"userprofile.other1 "+
+			"FROM usertaskcollect left outer join userprofile on usertaskcollect.author=userprofile.clientid "+
+			"WHERE usertaskcollect.messagetype=? AND usertaskcollect.messagetime>=? AND usertaskcollect.messagetime<=?", messagetype, starttime, endtime)
+	}
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var xuid int64
 		var collectfrompub string
 		var author string
 		var messagekey string
@@ -536,23 +562,24 @@ func (pdb *PubDB) GetUserTaskCollect(author, messagetype string, starttime, endt
 		var nfttxhash string
 		var nfttokenid string
 		var nftstoreurl string
+		var clientethaddr string
 
-		errnil := rows.Scan(&xuid, &collectfrompub, &author, &messagekey, &messagetype, &messageroot, &messagetime, &nfttxhash, &nfttokenid, &nftstoreurl)
+		errnil := rows.Scan(&collectfrompub, &author, &messagekey, &messagetype, &messageroot, &messagetime, &nfttxhash, &nfttokenid, &nftstoreurl, &clientethaddr)
 		if errnil != nil {
 			continue
-			//return nil, err
 		}
 		var e *UserTasks
 		e = &UserTasks{
-			CollectFromPub: collectfrompub,
-			Author:         author,
-			MessageKey:     messagekey,
-			MessageType:    messagetype,
-			MessageRoot:    messageroot,
-			MessageTime:    messagetime,
-			NfttxHash:      nfttxhash,
-			NftTokenId:     nfttokenid,
-			NftStoredUrl:   nftstoreurl,
+			CollectFromPub:   collectfrompub,
+			Author:           author,
+			MessageKey:       messagekey,
+			MessageType:      messagetype,
+			MessageRoot:      messageroot,
+			MessageTime:      messagetime,
+			NfttxHash:        nfttxhash,
+			NftTokenId:       nfttokenid,
+			NftStoredUrl:     nftstoreurl,
+			ClientEthAddress: clientethaddr,
 		}
 		usertasks = append(usertasks, e)
 	}

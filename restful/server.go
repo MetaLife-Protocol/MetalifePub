@@ -110,6 +110,7 @@ func Start(ctx *cli.Context) {
 
 		//get some user daily task infos from pub,
 		//a message may appear in multiple pubs, and the client removes redundant data through messagekey and pub id
+		//used by supernode to awarding or ssb-client
 		rest.Post("/ssb/api/get-user-daily-task", GetUserDailyTasks),
 
 		//notify pub the login infomation, pub will collect through this interface

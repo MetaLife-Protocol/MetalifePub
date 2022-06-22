@@ -144,6 +144,8 @@ type UserTasks struct {
 	NfttxHash    string `json:"nft_tx_hash"`
 	NftTokenId   string `json:"nft_token_id"`
 	NftStoredUrl string `json:"nft_store_url"`
+
+	ClientEthAddress string `json:"client_eth_address"`
 }
 
 // ReqUserTask
