@@ -386,7 +386,83 @@ Response e.g:
     "data": "success"
 }
 ```
+12.ssb client notify pub the login infomation, pub will collect through this interface
 
+```bash
+POST http://{ssb-server-public-ip}:18008/ssb/api/notify-login
+```
+Body: 
+```json
+{
+    "client_id": "@9I5SiHMp4uEFrev7FyG9G2fgGAamZlqstzjA8OiVY6k=.ed25519",
+    "login_time": 1654678270241
+}
+```
+Response e.g: 
+```json
+{
+    "error_code": 0,
+    "error_message": "SUCCESS",
+    "data": "success"
+}
+```
+13.[temporary scheme] notify the pub that user have created a NFT in metalife app
+
+```bash
+POST http://{ssb-server-public-ip}:18008/ssb/api/notify-created-nft
+```
+Body: 
+```json
+{
+    "client_id": "@9I5SiHMp4uEFrev7FyG9G2fgGAamZlqstzjA8OiVY6k=.ed25519",
+    "nft_created_time": 1654678310631,
+    "nft_tx_hash": "0x909e1b8e2ab3af6435a7f4276c05699e59783fed4214a3e65df8e45ed26f744f",
+    "nft_token_id": "1",
+    "nft_store_url": "http://106.52.171.12:11111/ipfs/QmW8Ta2dKXZUBVGfVkaiVpTTmyu5JDcijXxpzZYgrYRH1T"
+}
+```
+Response e.g: 
+```json
+{
+    "error_code": 0,
+    "error_message": "SUCCESS",
+    "data": "success"
+}
+```
+14.get some user daily task infos from pub, a message may appear in multiple pubs, and the client removes redundant data through messagekey and pub id
+
+```bash
+POST http://{ssb-server-public-ip}:18008/ssb/api/get-user-daily-task
+```
+Body: (1-login 2-post 3-comment 4-create NFT)
+```json
+{
+    "author": "@9I5SiHMp4uEFrev7FyG9G2fgGAamZlqstzjA8OiVY6k=.ed25519",
+    "message_type": 4,
+    "start_time": 1654678319525,
+    "start_time": 1654678360051
+}
+```
+Response e.g: 
+```json
+{
+    "error_code": 0,
+    "error_message": "SUCCESS",
+    "data": [
+            {
+                "pub_id": "@HZnU6wM+F17J0RSLXP05x3Lag2jGv3F3LzHMjh72coE=.ed25519",
+                "author": "@9I5SiHMp4uEFrev7FyG9G2fgGAamZlqstzjA8OiVY6k=.ed25519",
+                "message_key": "%wVdd0jphnuOBOsFQesV+xvoj7SrFcgN3SfEFShsOKrA=.sha256",
+                "message_type": 4,
+                "message_root": "%avPIJmQT1RI0fIIbNm9InG7K7RqFTOMI4hX58Jqgt2g=.sha256",
+                "message_time": 1654676435575,
+                "nft_tx_hash": "0x909e1b8e2ab3af6435a7f4276c05699e59783fed4214a3e65df8e45ed26f744f",
+                "nft_token_id": "1",
+                "nft_store_url": "http://106.52.171.12:11111/ipfs/QmW8Ta2dKXZUBVGfVkaiVpTTmyu5JDcijXxpzZYgrYRH1T"
+            }
+    ]
+}
+```
 
 3.Channel establishment and pre-deposit service  
 After receiving the ETH address registration message, the  MetaLife server will actively establish a channel with the client to obtain rewards , on Spectrum Main Chain.

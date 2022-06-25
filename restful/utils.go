@@ -2,6 +2,7 @@ package restful
 
 import (
 	"fmt"
+
 	"github.com/ant0ine/go-json-rest/rest"
 	"github.com/ethereum/go-ethereum/common"
 )
@@ -20,3 +21,6 @@ func HexToAddress(addr string) (address common.Address, err error) {
 	}
 	return
 }
+
+//EmptyHash all zero,invalid
+var EmptyHash = common.Hash{}
