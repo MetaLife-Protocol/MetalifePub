@@ -464,6 +464,34 @@ Response e.g:
 }
 ```
 
+15.Get the statistics of users' likes, if the body parms is null, you will get all users' likes
+
+```bash
+POST http://{ssb-server-public-ip}:18008/ssb/api/set-like-info
+```
+Body: (or null)
+```json
+{
+    "client_id":"@P2AR780TWII9tJXYfarlqAlU74hcU11XQ6ZdkPuv19A=.ed25519"
+}
+```
+Response e.g: 
+```json
+{
+    "error_code": 0,
+    "error_message": "SUCCESS",
+    "data": {
+        "@P2AR780TWII9tJXYfarlqAlU74hcU11XQ6ZdkPuv19A=.ed25519": {
+            "client_id": "@P2AR780TWII9tJXYfarlqAlU74hcU11XQ6ZdkPuv19A=.ed25519",
+            "laster_like_num": 2,
+            "client_name": "",
+            "client_eth_address": "",
+            "message_from_pub": "@HZnU6wM+F17J0RSLXP05x3Lag2jGv3F3LzHMjh72coE=.ed25519"
+        }
+    }
+}
+```
+
 3.Channel establishment and pre-deposit service  
 After receiving the ETH address registration message, the  MetaLife server will actively establish a channel with the client to obtain rewards , on Spectrum Main Chain.
 

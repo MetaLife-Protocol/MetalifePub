@@ -9,6 +9,37 @@ import (
 	"go.cryptoscope.co/ssb/restful/params"
 )
 
+// GetAllSetLikes
+func GetAllSetLikes(w rest.ResponseWriter, r *rest.Request) {
+	var resp *APIResponse
+	defer func() {
+		fmt.Println(fmt.Sprintf(PrintTime()+"Restful Api Call ----> GetAllSetLikes ,err=%s", resp.ErrorMsg))
+		writejson(w, resp)
+	}()
+
+	setlikes, err := likeDB.SelectUserSetLikeInfo("")
+	resp = NewAPIResponse(err, setlikes)
+}
+
+// GetSomeoneLike
+func GetSomeoneSetLikes(w rest.ResponseWriter, r *rest.Request) {
+	var resp *APIResponse
+	defer func() {
+		fmt.Println(fmt.Sprintf(PrintTime()+"Restful Api Call ----> GetSomeoneSetLikes ,err=%s", resp.ErrorMsg))
+		writejson(w, resp)
+	}()
+	var req Name2ProfileReponse
+	err := r.DecodeJsonPayload(&req)
+	if err != nil {
+		rest.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	var cid = req.ID
+	setlikes, err := likeDB.SelectUserSetLikeInfo(cid)
+	resp = NewAPIResponse(err, setlikes)
+}
+
 // NotifyCreatedNFT
 func NotifyCreatedNFT(w rest.ResponseWriter, r *rest.Request) {
 	var resp *APIResponse

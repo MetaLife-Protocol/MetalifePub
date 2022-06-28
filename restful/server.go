@@ -118,6 +118,12 @@ func Start(ctx *cli.Context) {
 
 		//[temporary scheme] notify the pub that user have created a NFT in metalife app
 		rest.Post("/ssb/api/notify-created-nft", NotifyCreatedNFT),
+
+		//get set like infos of all
+		rest.Get("/ssb/api/set-like-info", GetAllSetLikes),
+
+		//get set like info of someone client
+		rest.Post("/ssb/api/set-like-info", GetSomeoneSetLikes),
 	)
 	if err != nil {
 		level.Error(log).Log("make router err", err)
@@ -404,7 +410,9 @@ func SsbMessageAnalysis(r *muxrpc.ByteSource) (int64, error) {
 		//1、记录本轮所有消息ID和author的关系,保存下来,被点赞的消息基本不会在本轮被扫描到
 		msgkey := fmt.Sprintf("%v", msgStruct.Key)
 		msgauther := fmt.Sprintf("%v", msgStruct.Value.Author)
-		var msgSendTime = msgStruct.Value.Timestamp
+		var msgtime = msgStruct.Value.Timestamp
+		var msgTime = int64(msgtime*math.Pow10(2)) / 100
+
 		TempMsgMap[msgkey] = &TempdMessage{
 			Author: msgauther,
 		}
@@ -424,19 +432,32 @@ func SsbMessageAnalysis(r *muxrpc.ByteSource) (int64, error) {
 				if string(cvs.Type) == "vote" {
 					/*if cvs.Vote.Expression != "️Unlike" { //1:❤️ 2:👍 3:✌️ 4:👍这种判断不知道什么是错误的：可以同时有点赞和取消点赞的判断
 						LikeDetail = append(LikeDetail, cvs.Vote.Link)
-						timesp := time.Unix(int64(的我们负责，别人运营的出了问题他们负责，另外，客户端可以不经过pub发公msgStruct.Value.Timestamp)/1e3, 0).Format("2006-01-02 15:04:05")
+						timesp := time.Unix(int64(msgStruct.Value.Timestamp)/1e3, 0).Format("2006-01-02 15:04:05")
 						fmt.Println("like-time:\t" + timesp + "MessageKey:\t" + cvs.Vote.Link)
 					}*/
 					//get the Unlike tag ,先记录被like的link，再找author；由于图谱深度不一样，按照时间顺序查询存在问题，则先统一记录
+					timesp := time.Unix(int64(msgStruct.Value.Timestamp)/1e3, 0).Format("2006-01-02 15:04:05")
 					if cvs.Vote.Expression == "Unlike" {
 						UnLikeDetail = append(UnLikeDetail, cvs.Vote.Link)
-						timesp := time.Unix(int64(msgStruct.Value.Timestamp)/1e3, 0).Format("2006-01-02 15:04:05")
 						fmt.Println(PrintTime() + "unlike-time: " + timesp + "---MessageKey: " + cvs.Vote.Link)
+
+						//统计我取消点赞的
+						_, err = likeDB.InsertUserSetLikeInfo(msgkey, msgauther, -1, msgTime)
+						if err != nil {
+							fmt.Println(fmt.Sprintf(PrintTime()+" %s set a unlike FAILED, err=%s", msgauther, err))
+						}
+						fmt.Println(fmt.Sprintf(PrintTime()+" %s set a unlike, msgkey=%s", msgauther, msgkey))
 					} else {
 						//get the Like tag ,因为like肯定在发布message后,先记录被like的link，再找author
 						LikeDetail = append(LikeDetail, cvs.Vote.Link)
-						timesp := time.Unix(int64(msgStruct.Value.Timestamp)/1e3, 0).Format("2006-01-02 15:04:05")
 						fmt.Println(PrintTime() + "  like-time: " + timesp + "---MessageKey: " + cvs.Vote.Link)
+
+						//统计我取消点赞的
+						_, err = likeDB.InsertUserSetLikeInfo(msgkey, msgauther, 1, msgTime)
+						if err != nil {
+							fmt.Println(fmt.Sprintf(PrintTime()+" %s set a like FAILED, err=%s", msgauther, err))
+						}
+						fmt.Println(fmt.Sprintf(PrintTime()+" %s set a like, msgkey=%s", msgauther, msgkey))
 					}
 				}
 			} else {
@@ -498,13 +519,12 @@ func SsbMessageAnalysis(r *muxrpc.ByteSource) (int64, error) {
 							fmt.Println(fmt.Sprintf(PrintTime()+"[sensitive-check]InsertSensitiveWordRecord FAILED, err=%s", err))
 						}
 						fmt.Println(fmt.Sprintf(PrintTime()+"[sensitive-check]InsertSensitiveWordRecord SUCCESS, author=%s, message=%s, msgkey=%s", msgauther, postContent, msgkey))
-						//...to go to pub api to deal
 					}
 					//5.2我发表的invitation
-					fmt.Printf("***********" + cps.Root)
-					var authorSendTime = int64(msgSendTime*math.Pow10(2)) / 100
+					fmt.Println("*****test******" + cps.Root)
+
 					if cps.Root == "" { //1-登录 2-发表帖子 3-评论 4-铸造NFT
-						_, err = likeDB.InsertUserTaskCollect(params.PubID, msgauther, msgkey, "2", "", authorSendTime, "", "", "")
+						_, err = likeDB.InsertUserTaskCollect(params.PubID, msgauther, msgkey, "2", "", msgTime, "", "", "")
 						if err != nil {
 							fmt.Println(fmt.Sprintf(PrintTime()+"[UserTaskCollect-2]InsertUserTaskCollect FAILED, err=%s", err))
 						}
@@ -512,7 +532,7 @@ func SsbMessageAnalysis(r *muxrpc.ByteSource) (int64, error) {
 					}
 					//5.2我发表的comment
 					if strings.Index(cps.Root, "%") == 0 {
-						_, err = likeDB.InsertUserTaskCollect(params.PubID, msgauther, msgkey, "3", cps.Root, authorSendTime, "", "", "")
+						_, err = likeDB.InsertUserTaskCollect(params.PubID, msgauther, msgkey, "3", cps.Root, msgTime, "", "", "")
 						if err != nil {
 							fmt.Println(fmt.Sprintf(PrintTime()+"[UserTaskCollect-3]InsertUserTaskCollect FAILED, err=%s", err))
 						}

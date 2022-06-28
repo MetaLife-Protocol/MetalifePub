@@ -72,10 +72,17 @@ CREATE TABLE IF NOT EXISTS "usertaskcollect" (
    "messagekey" TEXT NULL,
    "messagetype" TEXT NULL,
    "messageroot" TEXT NULL,
-   "messagetime" INTEGER NULL
+   "messagetime" INTEGER NULL,
    "nfttxhash" TEXT NULL,
    "nfttokenid" TEXT NULL,
-   "nftstoreurl" TEXT NULL,
+   "nftstoreurl" TEXT NULL
+);
+CREATE TABLE IF NOT EXISTS "usersetlikeinfo" (
+   "uid" INTEGER PRIMARY KEY AUTOINCREMENT,
+   "messagekey" TEXT NULL,
+   "author" TEXT NULL,
+   "liketag" int NULL default 0,
+   "setliketime" INTEGER NULL default 0
 );
    `
 	_, err = db.Exec(sql_table)
@@ -83,6 +90,62 @@ CREATE TABLE IF NOT EXISTS "usertaskcollect" (
 		return nil, err
 	}
 	return &PubDB{db: db}, nil
+}
+
+// InsertUserSetLike liketag=1 or -1
+func (pdb *PubDB) InsertUserSetLikeInfo(messagekey, author string, liketag int, setliketime int64) (lastid int64, err error) {
+	stmt, err := pdb.db.Prepare("INSERT INTO usersetlikeinfo(messagekey,author,liketag,setliketime) VALUES (?,?,?,?)")
+	if err != nil {
+		return 0, err
+	}
+	res, err := stmt.Exec(messagekey, author, liketag, setliketime)
+	if err != nil {
+		return 0, err
+	}
+	lastid, err = res.LastInsertId()
+
+	return
+}
+
+//SelectLastScanTime
+func (pdb *PubDB) SelectUserSetLikeInfo(clientid string) (likesum map[string]*LasterNumLikes, err error) {
+	var rows *sql.Rows
+	if clientid == "" {
+		rows, err = pdb.db.Query("SELECT usersetlikeinfo.author,usersetlikeinfo.liketag,userprofile.clientname,userprofile.other1 FROM usersetlikeinfo left outer join userprofile on usersetlikeinfo.author=userprofile.clientid")
+	} else {
+		rows, err = pdb.db.Query("SELECT usersetlikeinfo.author,usersetlikeinfo.liketag,userprofile.clientname,userprofile.other1 FROM usersetlikeinfo left outer join userprofile on usersetlikeinfo.author=userprofile.clientid where usersetlikeinfo.author=?", clientid)
+	}
+	if err != nil {
+		return nil, err
+	}
+	likeCountMap := make(map[string]*LasterNumLikes)
+	defer rows.Close()
+	for rows.Next() {
+		var author string
+		var onemsglikes int
+		var cname string
+		var ethaddr string
+		errnil := rows.Scan(&author, &onemsglikes, &cname, &ethaddr)
+		if errnil != nil {
+			continue
+			//return nil, err
+		}
+		var l *LasterNumLikes
+		l = &LasterNumLikes{
+			ClientID:         author,
+			LasterLikeNum:    onemsglikes,
+			Name:             cname,
+			ClientEthAddress: ethaddr,
+			MessageFromPub:   params.PubID,
+		}
+		if _, ok := likeCountMap[author]; ok {
+			likeCountMap[author].LasterLikeNum += onemsglikes
+		} else {
+			likeCountMap[author] = l
+		}
+	}
+	likesum = likeCountMap
+	return
 }
 
 //InsertDataCalcTime  Violation record
