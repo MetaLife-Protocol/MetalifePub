@@ -5,10 +5,13 @@ import (
 	"fmt"
 
 	"errors"
-	"go.cryptoscope.co/ssb/restful/channel"
 	"math/big"
 	"net/http"
 	"time"
+
+	"strings"
+
+	"go.cryptoscope.co/ssb/restful/channel"
 )
 
 //var log kitlog.Logger
@@ -54,8 +57,8 @@ type PhotonNodeRuntime struct {
 	MainChainBalance *big.Int // 主链货币余额
 }
 
-// GetChannelWithBigInt :
-func (node *PhotonNode) GetChannelWithBigInt(partnerNode *PhotonNode, tokenAddr string) (*Channel, error) {
+// GetChannelWith :
+func (node *PhotonNode) GetChannelWith(partnerNode *PhotonNode, tokenAddr string) (*Channel, error) {
 	req := &Req{
 		FullURL: node.Host + "/api/1/channels",
 		Method:  http.MethodGet,
@@ -86,7 +89,7 @@ func (node *PhotonNode) GetChannelWithBigInt(partnerNode *PhotonNode, tokenAddr 
 }
 
 // OpenChannel :
-func (node *PhotonNode) OpenChannelBigInt(partnerAddress, tokenAddress string, balance *big.Int, settleTimeout int, waitSeconds ...int) error {
+func (node *PhotonNode) OpenChannel(partnerAddress, tokenAddress string, balance *big.Int, settleTimeout int, waitSeconds ...int) error {
 	type OpenChannelPayload struct {
 		PartnerAddress string   `json:"partner_address"`
 		TokenAddress   string   `json:"token_address"`
@@ -117,7 +120,7 @@ func (node *PhotonNode) OpenChannelBigInt(partnerAddress, tokenAddress string, b
 	err = json.Unmarshal(body, &ch)
 	if err != nil {
 		fmt.Println(fmt.Sprintf("OpenChannel Unmarshal err= %s", err))
-		//panic(err)
+		return err
 	}
 	var ws int
 	if len(waitSeconds) > 0 {
@@ -149,7 +152,6 @@ func (node *PhotonNode) SpecifiedChannel(channelIdentifier string) (c channel.Ch
 	}
 	body, err := req.Invoke()
 	if err != nil {
-		//log.Error(fmt.Sprintf("[SuperNode]SpecifiedChannel err :%s", err))
 		fmt.Println(fmt.Sprintf("[Pub]SpecifiedChannel err %s", err))
 		return
 	}
@@ -201,10 +203,35 @@ func (node *PhotonNode) Deposit(partnerAddress, tokenAddress string, balance *bi
 		Payload: string(p),
 		Timeout: time.Second * 20,
 	}
+	//记录deposit之前的通道余额
+	partners, err := node.TokenPartners(tokenAddress)
+	if err != nil {
+		fmt.Println(fmt.Sprintf("DepositApi %s err :%s when get node-balance in this channel before deposit", req.FullURL, err))
+		return err
+	}
+	if len(partners) == 0 {
+		fmt.Println(fmt.Sprintf("DepositApi %s err :%s,no channel between %s and %s in token %s", req.FullURL, err, node.Address, partnerAddress, tokenAddress))
+		return err
+	}
+	channelInfo := ""
+	for _, data := range partners {
+		if data.PartnerAddress == partnerAddress {
+			channelInfo = data.Channel
+			break
+		}
+	}
+	//"api/1/channles/0x9244a7c2bec98b59005656c5c98dba3ee394ccfd7710810a6af39929ca3d25a0"
+	channelInfo = strings.Split(channelInfo, "/")[3]
+	c, err := node.SpecifiedChannel(channelInfo)
+	if err != nil {
+		fmt.Println(fmt.Sprintf("DepositApi %s err when get SpecifiedChannel:%s", req.FullURL, err))
+		return err
+	}
+	nodeBalanceBeforeDeposit := c.Balance
+
 	body, err := req.Invoke()
 	if err != nil {
 		fmt.Println(fmt.Sprintf("[Pub]DepositApi err=%s ", err))
-
 		return err
 	}
 	fmt.Println(fmt.Sprintf("[Pub]Deposit returned=%s ", string(body)))
@@ -212,7 +239,7 @@ func (node *PhotonNode) Deposit(partnerAddress, tokenAddress string, balance *bi
 	err = json.Unmarshal(body, &ch)
 	if err != nil {
 		fmt.Println(fmt.Sprintf("Deposit Unmarshal err= %s", err))
-		//panic(err)
+		return err
 	}
 	var ws int
 	if len(waitSeconds) > 0 {
@@ -222,9 +249,8 @@ func (node *PhotonNode) Deposit(partnerAddress, tokenAddress string, balance *bi
 	}
 	var i int
 	for i = 0; i < ws; i++ {
-		time.Sleep(time.Second * 3)
-		_, err = node.SpecifiedChannel(ch.ChannelIdentifier)
-		//找到这个channel了才返回
+		time.Sleep(time.Second * 1)
+		_, err := node.SpecifiedChannel(ch.ChannelIdentifier)
 		if err == nil {
 			break
 		}
@@ -232,5 +258,62 @@ func (node *PhotonNode) Deposit(partnerAddress, tokenAddress string, balance *bi
 	if i == ws {
 		return errors.New("timeout")
 	}
+
+	//UDP通信时间不定，deposit异步，需要验证通道余额
+	for i = 0; i < 75; i++ {
+		time.Sleep(time.Second)
+		cx, err := node.SpecifiedChannel(ch.ChannelIdentifier)
+		if err == nil && cx.Balance.Cmp(new(big.Int).Add(nodeBalanceBeforeDeposit, balance)) == 0 {
+			break
+		}
+	}
+	if i == ws {
+		return errors.New("check result of Deposit timeout")
+	}
+
 	return nil
+}
+
+//PartnersDataResponse query by token
+type PartnersDataResponse struct {
+	PartnerAddress string `json:"partner_address"`
+	Channel        string `json:"channel"`
+}
+
+//TokenPartners query token partners
+func (node *PhotonNode) TokenPartners(token string) (partners []*PartnersDataResponse, err error) {
+	req := &Req{
+		FullURL: fmt.Sprintf(node.Host+"/api/1/tokens/%s/partners", token),
+		Method:  http.MethodGet,
+		Timeout: time.Second * 20,
+	}
+	body, err := req.Invoke()
+	if err != nil {
+		fmt.Println(fmt.Sprintf("TokenPartners err :%s", err))
+		return
+	}
+	err = json.Unmarshal(body, &partners)
+	if err != nil {
+		return
+	}
+	return
+}
+
+// TokenTransfer
+func (node *PhotonNode) TransferSMT(addr, value string) (err error) {
+	req := &Req{
+		FullURL: fmt.Sprintf(node.Host+"/api/1/transfer-smt/%s/%s", addr, value),
+		Method:  http.MethodPost,
+		Timeout: time.Second * 180,
+	}
+	body, err := req.Invoke()
+	if err != nil {
+		fmt.Println(fmt.Sprintf("transfer-smt err :%s", err))
+		return
+	}
+	err = json.Unmarshal(body, new(interface{}))
+	if err != nil {
+		return
+	}
+	return
 }

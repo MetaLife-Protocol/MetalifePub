@@ -599,23 +599,36 @@ func ChannelDeal(partnerAddress string) (err error) {
 		Address:    partnerAddress,
 		DebugCrash: false,
 	}
-	channel00, err := photonNode.GetChannelWithBigInt(partnerNode, params.TokenAddress)
+	channel00, err := photonNode.GetChannelWith(partnerNode, params.TokenAddress)
 	if err != nil {
 		fmt.Println(fmt.Sprintf(PrintTime()+"[Pub-Client-ChannelDeal-ERROR]GetChannelWithBigInterr %s", err))
 		return
 	}
 	if channel00 == nil {
-		//create new channel with 0.1smt
-		err = photonNode.OpenChannelBigInt(partnerNode.Address, params.TokenAddress, new(big.Int).Mul(big.NewInt(params.Finney), big.NewInt(100)), params.SettleTime)
+		//create new channel with 1 mlt
+		initRegistAmount := int64(params.MinBalanceInchannel + params.RegistrationAwarding)
+		err = photonNode.OpenChannel(partnerNode.Address, params.TokenAddress, new(big.Int).Mul(big.NewInt(params.Ether), big.NewInt(initRegistAmount)), params.SettleTime)
 		if err != nil {
 			fmt.Println(fmt.Sprintf(PrintTime()+"[Pub-Client-ChannelDeal-ERROR]create channel err %s", err))
 			return
 		}
 		fmt.Println(fmt.Sprintf(PrintTime()+"[Pub-Client-ChannelDeal-OK]create channel success, with %s", partnerAddress))
 
-		//registration award
-		err = sendToken(partnerAddress, int64(params.RegistrationAwarding), true, false)
+		//registration award 新地址才发送注册激励
+		//err = sendToken(partnerAddress, int64(params.RegistrationAwarding), true, false)
+		amount := new(big.Int).Mul(big.NewInt(params.Ether), big.NewInt(int64(params.RegistrationAwarding)))
+		err = photonNode.SendTrans(params.TokenAddress, amount, partnerAddress, true, false)
+		if err != nil {
+			return
+		}
 		fmt.Println(fmt.Sprintf(PrintTime()+"[Pub-Client-ChannelDeal-OK]send registration award to %s, err=%s", partnerAddress, err))
+
+		//继续发送SMT激励
+		err = photonNode.TransferSMT(partnerAddress, new(big.Int).Mul(big.NewInt(params.Ether), big.NewInt(int64(params.RegistrationAwardingSMT))).String())
+		if err != nil {
+			return
+		}
+		fmt.Println(fmt.Sprintf(PrintTime()+"[Pub-Client-ChannelDeal-OK]send registration award(SMT) to %s, err=%s", partnerAddress, err))
 
 	} else {
 		fmt.Println(fmt.Sprintf(PrintTime()+"[Pub-Client-ChannelDeal-OK]channel has exist, with %s", partnerAddress))
@@ -638,9 +651,10 @@ func sendToken(partnerAddress string, xamount int64, isdirect, sync bool) (err e
 		APIAddress: params.PhotonHost,
 		DebugCrash: false,
 	}
-	amount := new(big.Int).Mul(big.NewInt(params.Finney), big.NewInt(xamount))
+	amount := new(big.Int).Mul(big.NewInt(params.Ether), big.NewInt(xamount))
 	err = photonNode.Deposit(partnerAddress, params.TokenAddress, amount, 48)
 	if err != nil {
+		fmt.Println(fmt.Sprintf("Deposit error=%s", err))
 		return err
 	}
 	err = photonNode.SendTrans(params.TokenAddress, amount, partnerAddress, isdirect, sync)
@@ -654,7 +668,7 @@ func checkPubChannelBalance() (err error) {
 		_, err = HexToAddress(clientaddrStr)
 		if err != nil {
 			err = fmt.Errorf("[Pub-CheckPubChannelBalance]verify clientid [%v] 's ETH-ADDRSS error=%s", info.ID, err)
-			return
+			continue
 		}
 		pubNode := &PhotonNode{
 			Host:       "http://" + params.PhotonHost,
@@ -662,7 +676,7 @@ func checkPubChannelBalance() (err error) {
 			APIAddress: params.PhotonHost,
 			DebugCrash: false,
 		}
-		channelX, err := pubNode.GetChannelWithBigInt(
+		channelX, err := pubNode.GetChannelWith(
 			&PhotonNode{Address: clientaddrStr, DebugCrash: false},
 			params.TokenAddress)
 		if err != nil || channelX == nil {

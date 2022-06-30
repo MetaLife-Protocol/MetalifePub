@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/ant0ine/go-json-rest/rest"
+	"github.com/ethereum/go-ethereum/common"
 	"go.cryptoscope.co/ssb/restful/params"
 )
 
@@ -89,6 +90,7 @@ func NotifyUserLogin(w rest.ResponseWriter, r *rest.Request) {
 		rest.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	//
 
 	resp = NewAPIResponse(err, "Success")
 }
@@ -342,21 +344,24 @@ func UpdateEthAddr(w rest.ResponseWriter, r *rest.Request) {
 		return
 	}
 
-	_, err = HexToAddress(req.EthAddress)
-	if err != nil {
-		resp = NewAPIResponse(err, nil)
-		return
-	}
-	_, err = likeDB.UpdateUserProfile(req.ID, req.Name, req.EthAddress)
+	/*
+		此处跳过校验，前端不好处理
+		_, err = HexToAddress(req.EthAddress)
+		if err != nil {
+			resp = NewAPIResponse(err, nil)
+			return
+		}*/
+	ethAddress := common.HexToAddress(req.EthAddress)
+	_, err = likeDB.UpdateUserProfile(req.ID, req.Name, ethAddress.String())
 	if err != nil {
 		rest.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	//和客户端建立一个奖励通道
-	err = ChannelDeal(req.EthAddress)
+	err = ChannelDeal(ethAddress.String())
 	if err != nil {
-		resp = NewAPIResponse(fmt.Errorf("fail to create a channel to %s, because %s", req.EthAddress, err), nil)
+		resp = NewAPIResponse(fmt.Errorf("fail to create a channel to %s, because %s", ethAddress.String(), err), nil)
 		return
 	}
 	resp = NewAPIResponse(err, "success")

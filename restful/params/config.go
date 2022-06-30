@@ -47,9 +47,11 @@ const (
 
 var PhotonHost = "127.0.0.1:11001"
 
-var PhotonAddress = "0xBaBaeafB77585472531D3E8E6f3C3bCF4c04cBE4"
+var PhotonAddress = ""
 
-var TokenAddress = "0x6601F810eaF2fa749EEa10533Fd4CC23B8C791dc"
+var TokenAddress = "0xA27F8f580C01Db0682Ce185209FFb84121a2F711"
+
+var SMTTokenAddress = "0x6601F810eaF2fa749EEa10533Fd4CC23B8C791dc"
 
 var SettleTime = 40000
 
@@ -68,7 +70,10 @@ var PubID = ""
 var ReportRewarding = 0
 
 // RegistrationAwarding
-var RegistrationAwarding = 0
+var RegistrationAwarding = 1000
+
+// RegistrationAwarding
+var RegistrationAwardingSMT = 50
 
 // SensitiveWordsFilePath
 var SensitiveWordsFilePath = ""
