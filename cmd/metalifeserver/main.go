@@ -29,14 +29,15 @@ import (
 	"golang.org/x/crypto/ed25519"
 	"gopkg.in/urfave/cli.v2"
 
+	"os/signal"
+	"syscall"
+
 	"go.cryptoscope.co/ssb"
 	ssbClient "go.cryptoscope.co/ssb/client"
 	"go.cryptoscope.co/ssb/plugins/legacyinvites"
 	"go.cryptoscope.co/ssb/restful"
 	"go.cryptoscope.co/ssb/restful/params"
-	"go.mindeco.de/ssb-refs"
-	"os/signal"
-	"syscall"
+	refs "go.mindeco.de/ssb-refs"
 )
 
 // Version and Build are set by ldflags

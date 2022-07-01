@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"time"
 
+	"strings"
+
 	"github.com/ant0ine/go-json-rest/rest"
 	"github.com/ethereum/go-ethereum/common"
 	"go.cryptoscope.co/ssb/restful/params"
@@ -344,13 +346,12 @@ func UpdateEthAddr(w rest.ResponseWriter, r *rest.Request) {
 		return
 	}
 
-	/*
-		此处跳过校验，前端不好处理
-		_, err = HexToAddress(req.EthAddress)
-		if err != nil {
-			resp = NewAPIResponse(err, nil)
-			return
-		}*/
+	/*//此处跳过校验，前端不好处理
+	_, err = HexToAddress(req.EthAddress)
+	if err != nil {
+		resp = NewAPIResponse(err, nil)
+		return
+	}*/
 	ethAddress := common.HexToAddress(req.EthAddress)
 	_, err = likeDB.UpdateUserProfile(req.ID, req.Name, ethAddress.String())
 	if err != nil {
@@ -359,12 +360,25 @@ func UpdateEthAddr(w rest.ResponseWriter, r *rest.Request) {
 	}
 
 	//和客户端建立一个奖励通道
-	err = ChannelDeal(ethAddress.String())
+	//修改为先返回结果
+	/*err = NewChannelDeal(ethAddress.String())
 	if err != nil {
 		resp = NewAPIResponse(fmt.Errorf("fail to create a channel to %s, because %s", ethAddress.String(), err), nil)
 		return
-	}
+	}*/
+	go NewChannelDeal(ethAddress.String())
 	resp = NewAPIResponse(err, "success")
+}
+
+// CheckHealthChannelForRegisteEth 6分钟重试一次，重试20次
+func CheckHealthChannelForRegisteEth(addr string) {
+	for i := 0; i < 20; i++ {
+		err := NewChannelDeal(addr)
+		if err == nil {
+			break
+		}
+		time.Sleep(time.Second * 360)
+	}
 }
 
 // GetAllNodesProfile
@@ -430,4 +444,15 @@ func CalcGetLikeSum(someoneOrAll string) (datas map[string]*LasterNumLikes, err 
 	}
 	datas = likes
 	return
+}
+
+func PostWordCountBigThan10(words string) bool {
+	wlen := 0
+	wordsSlice := strings.Split(words, " ")
+	for _, word := range wordsSlice {
+		if word != "" {
+			wlen++
+		}
+	}
+	return wlen > 10
 }

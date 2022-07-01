@@ -82,11 +82,11 @@ type ContentAboutStru struct {
 
 // ContentPostStru
 type ContentPostStru struct {
-	Type     string `json:"type"`
-	Text     string `json:"text"`
-	Root     string `json:"root"`
-	Mentions string `json:"mentions"`
-	Branch   string `json:"branch"`
+	Type     string          `json:"type"`
+	Text     string          `json:"text"`
+	Root     string          `json:"root"`
+	Mentions json.RawMessage `json:"mentions"`
+	Branch   string          `json:"branch"`
 }
 
 // LasterNumLikes

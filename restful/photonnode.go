@@ -299,6 +299,30 @@ func (node *PhotonNode) TokenPartners(token string) (partners []*PartnersDataRes
 	return
 }
 
+type repsNodeStatus struct {
+	DeviceType string `json:"device_type"`
+	IsOnline   bool   `json:"is_online"`
+}
+
+//GetNodeStatus query status of online, just for xmpp
+func (node *PhotonNode) GetNodeStatus(nodeaddr string) (status *repsNodeStatus, err error) {
+	req := &Req{
+		FullURL: fmt.Sprintf(node.Host+"/api/1/node-status/%s", nodeaddr),
+		Method:  http.MethodGet,
+		Timeout: time.Second * 20,
+	}
+	body, err := req.Invoke()
+	if err != nil {
+		fmt.Println(fmt.Sprintf("GetNodeStatus err :%s", err))
+		return
+	}
+	err = json.Unmarshal(body, &status)
+	if err != nil {
+		return
+	}
+	return
+}
+
 // TokenTransfer
 func (node *PhotonNode) TransferSMT(addr, value string) (err error) {
 	req := &Req{

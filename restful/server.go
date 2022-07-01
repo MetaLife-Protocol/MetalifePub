@@ -32,6 +32,8 @@ import (
 
 	"math"
 
+	"errors"
+
 	"go.cryptoscope.co/ssb"
 	"go.cryptoscope.co/ssb/dfa"
 	"go.cryptoscope.co/ssb/message"
@@ -521,24 +523,24 @@ func SsbMessageAnalysis(r *muxrpc.ByteSource) (int64, error) {
 						fmt.Println(fmt.Sprintf(PrintTime()+"[sensitive-check]InsertSensitiveWordRecord SUCCESS, author=%s, message=%s, msgkey=%s", msgauther, postContent, msgkey))
 					}
 					//5.2我发表的invitation
-					fmt.Println("*****test******" + cps.Root)
-
-					if cps.Root == "" { //1-登录 2-发表帖子 3-评论 4-铸造NFT
+					if cps.Root == "" && PostWordCountBigThan10(postContent) { //1-登录 2-发表帖子 3-评论 4-铸造NFT
 						_, err = likeDB.InsertUserTaskCollect(params.PubID, msgauther, msgkey, "2", "", msgTime, "", "", "")
 						if err != nil {
-							fmt.Println(fmt.Sprintf(PrintTime()+"[UserTaskCollect-2]InsertUserTaskCollect FAILED, err=%s", err))
+							fmt.Println(fmt.Sprintf(PrintTime()+"[UserTaskCollect-post]InsertUserTaskCollect FAILED, err=%s", err))
 						}
-						fmt.Println(fmt.Sprintf(PrintTime()+"[UserTaskCollect-2]InsertUserTaskCollect SUCCESS, author=%s, msgkey=%s", msgauther, msgkey))
+						fmt.Println(fmt.Sprintf(PrintTime()+"[UserTaskCollect-post]InsertUserTaskCollect SUCCESS, author=%s, msgkey=%s", msgauther, msgkey))
 					}
-					//5.2我发表的comment
-					if strings.Index(cps.Root, "%") == 0 {
+					//5.3我发表的comment
+					if cps.Root != "" && PostWordCountBigThan10(postContent) {
 						_, err = likeDB.InsertUserTaskCollect(params.PubID, msgauther, msgkey, "3", cps.Root, msgTime, "", "", "")
 						if err != nil {
-							fmt.Println(fmt.Sprintf(PrintTime()+"[UserTaskCollect-3]InsertUserTaskCollect FAILED, err=%s", err))
+							fmt.Println(fmt.Sprintf(PrintTime()+"[UserTaskCollect-comment]InsertUserTaskCollect FAILED, err=%s", err))
 						}
-						fmt.Println(fmt.Sprintf(PrintTime()+"[UserTaskCollect-3]InsertUserTaskCollect SUCCESS, author=%s, msgkey=%s", msgauther, msgkey))
+						fmt.Println(fmt.Sprintf(PrintTime()+"[UserTaskCollect-comment]InsertUserTaskCollect SUCCESS, author=%s, msgkey=%s", msgauther, msgkey))
 					}
 				}
+			} else {
+				fmt.Println(fmt.Errorf("json.Unmarshal(msgStruct.Value.Content err=%s", err))
 			}
 		}
 	}
@@ -587,7 +589,7 @@ func SsbMessageAnalysis(r *muxrpc.ByteSource) (int64, error) {
 }
 
 // ChannelDeal
-func ChannelDeal(partnerAddress string) (err error) {
+func NewChannelDeal(partnerAddress string) (err error) {
 	photonNode := &PhotonNode{
 		Host:       "http://" + params.PhotonHost,
 		Address:    params.PhotonAddress,
@@ -599,6 +601,7 @@ func ChannelDeal(partnerAddress string) (err error) {
 		Address:    partnerAddress,
 		DebugCrash: false,
 	}
+
 	channel00, err := photonNode.GetChannelWith(partnerNode, params.TokenAddress)
 	if err != nil {
 		fmt.Println(fmt.Sprintf(PrintTime()+"[Pub-Client-ChannelDeal-ERROR]GetChannelWithBigInterr %s", err))
@@ -614,19 +617,43 @@ func ChannelDeal(partnerAddress string) (err error) {
 		}
 		fmt.Println(fmt.Sprintf(PrintTime()+"[Pub-Client-ChannelDeal-OK]create channel success, with %s", partnerAddress))
 
+		netStatus := false
+		for i := 0; i < 20; i++ {
+			nodeS, err := photonNode.GetNodeStatus(partnerAddress)
+			if err != nil {
+				fmt.Println(fmt.Sprintf(PrintTime()+"[Pub-Client-ChannelDeal-ERROR]GetNodeStatus %s", err))
+				continue
+			}
+			netStatus = nodeS.IsOnline
+			if netStatus {
+				break
+			}
+			time.Sleep(time.Second * 120)
+		}
+
+		/*netStatus, err = photonNode.GetNodeStatus(partnerAddress)
+		if err != nil {
+			fmt.Println(fmt.Sprintf(PrintTime()+"[Pub-Client-ChannelDeal-ERROR]GetNodeStatus %s", err))
+			return err
+		}*/
+		if !netStatus {
+			fmt.Println(fmt.Sprintf(PrintTime()+"[Pub-Client-ChannelDeal-ERROR]GetNodeStatus(retry 20 times) %s online= %s", partnerAddress, netStatus))
+			return errors.New("partner offline")
+		}
+
 		//registration award 新地址才发送注册激励
 		//err = sendToken(partnerAddress, int64(params.RegistrationAwarding), true, false)
 		amount := new(big.Int).Mul(big.NewInt(params.Ether), big.NewInt(int64(params.RegistrationAwarding)))
 		err = photonNode.SendTrans(params.TokenAddress, amount, partnerAddress, true, false)
 		if err != nil {
-			return
+			return err
 		}
 		fmt.Println(fmt.Sprintf(PrintTime()+"[Pub-Client-ChannelDeal-OK]send registration award to %s, err=%s", partnerAddress, err))
 
 		//继续发送SMT激励
 		err = photonNode.TransferSMT(partnerAddress, new(big.Int).Mul(big.NewInt(params.Ether), big.NewInt(int64(params.RegistrationAwardingSMT))).String())
 		if err != nil {
-			return
+			return err
 		}
 		fmt.Println(fmt.Sprintf(PrintTime()+"[Pub-Client-ChannelDeal-OK]send registration award(SMT) to %s, err=%s", partnerAddress, err))
 

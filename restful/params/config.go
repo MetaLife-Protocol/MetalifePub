@@ -77,3 +77,6 @@ var RegistrationAwardingSMT = 50
 
 // SensitiveWordsFilePath
 var SensitiveWordsFilePath = ""
+
+// MaxDailyRewarding pub send mlt, instead of supernode
+var MaxDailyRewarding = 500
