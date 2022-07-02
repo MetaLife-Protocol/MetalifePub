@@ -84,12 +84,100 @@ CREATE TABLE IF NOT EXISTS "usersetlikeinfo" (
    "liketag" int NULL default 0,
    "setliketime" INTEGER NULL default 0
 );
+CREATE TABLE IF NOT EXISTS "rewardresult" (
+   "uid" INTEGER PRIMARY KEY AUTOINCREMENT,
+   "clientid" TEXT NULL,
+   "ethaddress" TEXT NULL,
+   "grantsuccess" TEXT NULL,
+   "granttoken" INTEGER NULL default 0,
+   "rewardreason" TEXT NULL,
+   "messagekey" TEXT NULL,
+   "messagetime" INTEGER NULL default 0,
+   "rewardtime" INTEGER NULL default 0
+);
    `
 	_, err = db.Exec(sql_table)
 	if err != nil {
 		return nil, err
 	}
 	return &PubDB{db: db}, nil
+}
+
+// InsertRewardResult
+func (pdb *PubDB) RecordRewardResult(clientId, ethAddress, grantSuccess string, grantToken int64, rewardReason, messageKey string, messageTime, rewardTime int64) (lastid int64, err error) {
+	stmt, err := pdb.db.Prepare("INSERT INTO rewardresult(clientid,ethaddress,grantsuccess,granttoken,rewardreason,messagekey,messagetime,rewardtime) VALUES (?,?,?,?,?,?,?,?)")
+	if err != nil {
+		return 0, err
+	}
+	res, err := stmt.Exec(clientId, ethAddress, grantSuccess, grantToken, rewardReason, messageKey, messageTime, rewardTime)
+	if err != nil {
+		return 0, err
+	}
+	lastid, err = res.LastInsertId()
+	return
+}
+
+// SelectRewardResult
+func (pdb *PubDB) SelectRewardResult(clientid string, timefrom, timeto int64) (rinfo []*RewardResult, err error) {
+	var rows *sql.Rows
+	if clientid == "" {
+		rows, err = pdb.db.Query("SELECT * FROM rewardresult where rewardtime>=? and rewardtime<?", timefrom, timeto)
+	} else {
+		rows, err = pdb.db.Query("SELECT * FROM rewardresult where clientid=? and rewardtime>=? and rewardtime<?", clientid, timefrom, timeto)
+	}
+	if err != nil {
+		return nil, err
+	}
+	infos := []*RewardResult{}
+	defer rows.Close()
+	for rows.Next() {
+		var uid int64
+		var cid string
+		var ethaddr string
+		var grantsuccess string
+		var granttoken int64
+		var reason string
+		var megkey string
+		var msgtime int64
+		var rewardtime int64
+		err = rows.Scan(&uid, &cid, &ethaddr, &grantsuccess, &granttoken, &reason, &megkey, &msgtime, &rewardtime)
+		if err != nil {
+			return nil, err
+		}
+		var r *RewardResult
+		r = &RewardResult{
+			ClientID:         cid,
+			ClientEthAddress: ethaddr,
+			GrantSuccess:     grantsuccess,
+			GrantTokenAmount: granttoken,
+			RewardReason:     reason,
+			MessageKey:       megkey,
+			MessageTime:      msgtime,
+			RewardTime:       rewardtime,
+		}
+		infos = append(infos, r)
+	}
+	rinfo = infos
+	return
+}
+
+// SelectRewardResult
+func (pdb *PubDB) SelectHistoryReward(clientId, rewardreason string, starttime, endtime int64) (awardTokenNum int64, err error) {
+	rows, err := pdb.db.Query("SELECT count(granttoken) FROM rewardresult where clientid=? and rewardreason=? and rewardtime>=? AND rewardtime<?", clientId, rewardreason, starttime, endtime)
+	if err != nil {
+		return 0, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var awardtokennum int64
+		errnil := rows.Scan(&awardtokennum)
+		if errnil != nil {
+			return 0, errnil
+		}
+		awardTokenNum = awardtokennum
+		break
+	}
+	return
 }
 
 // InsertUserSetLike liketag=1 or -1
@@ -103,7 +191,6 @@ func (pdb *PubDB) InsertUserSetLikeInfo(messagekey, author string, liketag int, 
 		return 0, err
 	}
 	lastid, err = res.LastInsertId()
-
 	return
 }
 
@@ -566,7 +653,7 @@ func (pdb *PubDB) SelectSensitiveWordRecord(selecttag string) (eventsSensitiveWo
 	return
 }
 
-// InsertSensitiveWordRecord messagetype:1-登录 2-发表帖子 3-评论 4-铸造NFT
+// InsertUserTaskCollect messagetype:1-登录 2-发表帖子 3-评论 4-铸造NFT
 func (pdb *PubDB) InsertUserTaskCollect(pubid, author, messagekey, messagetype, messageroot string, messagetime int64, nfttxhash, nfttokenid, nftstoreurl string) (lastid int64, err error) {
 	stmt, err := pdb.db.Prepare("INSERT INTO usertaskcollect(collectfrompub,author,messagekey,messagetype,messageroot,messagetime,nfttxhash,nfttokenid,nftstoreurl) VALUES (?,?,?,?,?,?,?,?,?)")
 	if err != nil {

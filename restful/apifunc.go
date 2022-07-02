@@ -12,6 +12,44 @@ import (
 	"go.cryptoscope.co/ssb/restful/params"
 )
 
+// GetSomeoneLike
+func GetRewardInfo(w rest.ResponseWriter, r *rest.Request) {
+	var resp *APIResponse
+	defer func() {
+		fmt.Println(fmt.Sprintf(PrintTime()+"Restful Api Call ----> GetRewardInfo ,err=%s", resp.ErrorMsg))
+		writejson(w, resp)
+	}()
+	var req RewardingReq
+	err := r.DecodeJsonPayload(&req)
+	if err != nil {
+		rest.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	var clientid = req.ClientID
+	//var grandsuccess = req.GrantSuccess
+	//var rewardreason = req.RewardReason
+	var timefrom = req.TimeFrom
+	var timeTo = req.TimeTo
+
+	rresult, err := likeDB.SelectRewardResult(clientid, timefrom, timeTo)
+	resp = NewAPIResponse(err, rresult)
+}
+
+/*
+// RewardingResult
+type RewardingResult struct {
+	ClientID         string   `json:"client_id"`
+	ClientEthAddress int64    `json:"client_eth_address"`
+	GrantSuccess     string   `json:"grant_success"`
+	GrantToken1e18   *big.Int `json:"grant_token_1e18"`
+	RewardReason     string   `json:"reward_reason"`
+	MessageKey       string   `json:"message_key"`
+	MessageTime      string   `json:"message_time"`
+	RewardTime       string   `json:"reward_time"`
+}
+*/
+
 // GetAllSetLikes
 func GetAllSetLikes(w rest.ResponseWriter, r *rest.Request) {
 	var resp *APIResponse
@@ -68,6 +106,16 @@ func NotifyCreatedNFT(w rest.ResponseWriter, r *rest.Request) {
 		return
 	}
 
+	{ //发送激励
+		name2addr, err := GetNodeProfile(cid)
+		if err != nil || len(name2addr) != 1 {
+			fmt.Println(fmt.Errorf(MintNft+" Reward %s ethereum address failed, err= not found or %s", cid, err))
+		} else {
+			ehtAddr := name2addr[0].EthAddress
+			go PubRewardToken(ehtAddr, int64(params.RewardOfMintNft), cid, MintNft, "", time.Now().UnixNano()/1e6)
+		}
+	}
+
 	resp = NewAPIResponse(err, "Success")
 }
 
@@ -92,8 +140,16 @@ func NotifyUserLogin(w rest.ResponseWriter, r *rest.Request) {
 		rest.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	//
 
+	{ //发送激励
+		name2addr, err := GetNodeProfile(cid)
+		if err != nil || len(name2addr) != 1 {
+			fmt.Println(fmt.Errorf(DailyLogin+" Reward %s ethereum address failed, err= not found or %s", cid, err))
+		} else {
+			ehtAddr := name2addr[0].EthAddress
+			go PubRewardToken(ehtAddr, int64(params.RewardOfDailyLogin), cid, DailyLogin, "", time.Now().UnixNano()/1e6)
+		}
+	}
 	resp = NewAPIResponse(err, "Success")
 }
 
@@ -255,25 +311,22 @@ func DealTippedOff(w rest.ResponseWriter, r *rest.Request) {
 		//1 unfollow and block 'the defendant' and sign him to blacklist
 		err = contactSomeone(nil, req.Defendant, true, true)
 		if err != nil {
-			resp = NewAPIResponse(err, fmt.Sprintf("Unfollow and block %s failed", req.Defendant))
+			resp = NewAPIResponse(err, fmt.Sprintf("Unfollow and block %s failed, err=%s", req.Defendant, err))
 			return
 		}
 		fmt.Println(fmt.Sprintf(PrintTime()+"Success to Unfollow and block %s", req.Defendant))
 
-		//2 pub另行支付给‘the plaintiff’发token
-		name2addr, err := GetNodeProfile(req.Plaintiff)
-		if err != nil || len(name2addr) != 1 {
-			resp = NewAPIResponse(fmt.Errorf("DealTippedOff-Get plaintiff's ethereum address failed, err= not found or %s", err), "failed")
-			return
+		{ //发送激励
+			name2addr, err := GetNodeProfile(req.Plaintiff)
+			if err != nil || len(name2addr) != 1 {
+				fmt.Println(fmt.Errorf(ReportProblematicPost+" Reward %s ethereum address failed, err= not found or %s", req.Plaintiff, err))
+			} else {
+				ehtAddr := name2addr[0].EthAddress
+				go PubRewardToken(ehtAddr, int64(params.RewardOfReportProblematicPost), req.Plaintiff, ReportProblematicPost, req.MessageKey, dtime)
+			}
 		}
-		addrPlaintiff := name2addr[0].EthAddress
 
-		err = sendToken(addrPlaintiff, int64(params.ReportRewarding), true, false)
-		if err != nil {
-			resp = NewAPIResponse(fmt.Errorf("DealTippedOff-Failed to Award to %s for ReportRewarding,err= %s", req.Plaintiff, err), "failed")
-			return
-		}
-		_, err = likeDB.UpdateViolation(req.DealTag, dtime, fmt.Sprintf("%d%s", params.ReportRewarding, "e15-"), req.Plaintiff, req.Defendant, req.MessageKey)
+		_, err = likeDB.UpdateViolation(req.DealTag, dtime, fmt.Sprintf("%d%s", params.RewardOfReportProblematicPost, "e18-"), req.Plaintiff, req.Defendant, req.MessageKey)
 		if err != nil {
 			rest.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -366,19 +419,8 @@ func UpdateEthAddr(w rest.ResponseWriter, r *rest.Request) {
 		resp = NewAPIResponse(fmt.Errorf("fail to create a channel to %s, because %s", ethAddress.String(), err), nil)
 		return
 	}*/
-	go NewChannelDeal(ethAddress.String())
+	go NewChannelDeal(ethAddress.String(), req.ID, time.Now().UnixNano()/1e6)
 	resp = NewAPIResponse(err, "success")
-}
-
-// CheckHealthChannelForRegisteEth 6分钟重试一次，重试20次
-func CheckHealthChannelForRegisteEth(addr string) {
-	for i := 0; i < 20; i++ {
-		err := NewChannelDeal(addr)
-		if err == nil {
-			break
-		}
-		time.Sleep(time.Second * 360)
-	}
 }
 
 // GetAllNodesProfile

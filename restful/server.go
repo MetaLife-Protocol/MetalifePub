@@ -56,6 +56,17 @@ var likeDB *PubDB
 
 var dfax *dfa.DFA
 
+const (
+	SignUp                = "sign up"
+	PostMessage           = "post message"
+	PostComment           = "post comment"
+	MintNft               = "mint a nft"
+	DailyLogin            = "daily login"
+	LikePost              = "like a post"
+	ReceiveLike           = "receive a like"
+	ReportProblematicPost = "report problematic post"
+)
+
 // Start
 func Start(ctx *cli.Context) {
 	Config = params.NewApiServeConfig()
@@ -77,55 +88,74 @@ func Start(ctx *cli.Context) {
 	}
 	api.Use(rest.DefaultDevStack...)
 	router, err := rest.MakeRouter(
+
+		/*
+			ssb pub信息
+		*/
 		//pub's whoami
 		rest.Get("/ssb/api/pub-whoami", GetPubWhoami),
 
-		//likes of all client
-		rest.Get("/ssb/api/likes", GetAllLikes),
-
-		//likes of someone client
-		rest.Post("/ssb/api/likes", GetSomeoneLike),
-
+		/*
+			ssb节点注册,信息查询,例如查询其绑定的钱包地址
+		*/
 		//get all 'about' message,e.g:'about'='eth address'
 		rest.Get("/ssb/api/node-info", clientid2Profiles),
-
 		//get the 'about' message by client id ,e.g:'about'='eth address'
 		rest.Post("/ssb/api/node-info", clientid2Profile),
-
 		//register client's eth address to it's ID
 		rest.Post("/ssb/api/id2eth", UpdateEthAddr),
 
+		/*
+			受赞统计
+		*/
+		//likes of all client
+		rest.Get("/ssb/api/likes", GetAllLikes),
+		//likes of someone client
+		rest.Post("/ssb/api/likes", GetSomeoneLike),
+
+		/*
+			点赞统计
+		*/
+		//get set like infos of all
+		rest.Get("/ssb/api/set-like-info", GetAllSetLikes),
+		//get set like info of someone client
+		rest.Post("/ssb/api/set-like-info", GetSomeoneSetLikes),
+
+		/*
+			举报
+		*/
 		// tipped someone off 举报
 		rest.Post("/ssb/api/tipped-who-off", TippedOff),
-
 		//tipped off infomation 所有举报的信息汇总
 		rest.Get("/ssb/api/tippedoff-info", GetTippedOffInfo),
-
 		//tippedoff-deal pub管理员对举报的信息进行处理，认证，如属实，则对该账号进行黑名单处理
 		rest.Post("/ssb/api/tippedoff-deal", DealTippedOff),
 
+		/*
+			敏感词
+		*/
 		//DealSensitiveWord pub管理对敏感词的处理/block or ignore
 		rest.Post("/ssb/api/sensitive-word-deal", DealSensitiveWord),
-
 		//get all sensitive-word-events from pub
 		rest.Post("/ssb/api/sensitive-word-events", GetEventSensitiveWord),
 
+		/*
+			用户每日任务,数据类型：1-登录 2-发帖(Pub自动处理) 3-评论(Pub自动处理) 4-铸造NFT
+		*/
+		//notify pub the login infomation, pub will collect through this interface
+		rest.Post("/ssb/api/notify-login", NotifyUserLogin),
+		//[temporary scheme] notify the pub that user have created a NFT in metalife app
+		rest.Post("/ssb/api/notify-created-nft", NotifyCreatedNFT),
 		//get some user daily task infos from pub,
 		//a message may appear in multiple pubs, and the client removes redundant data through messagekey and pub id
 		//used by supernode to awarding or ssb-client
 		rest.Post("/ssb/api/get-user-daily-task", GetUserDailyTasks),
 
-		//notify pub the login infomation, pub will collect through this interface
-		rest.Post("/ssb/api/notify-login", NotifyUserLogin),
-
-		//[temporary scheme] notify the pub that user have created a NFT in metalife app
-		rest.Post("/ssb/api/notify-created-nft", NotifyCreatedNFT),
-
-		//get set like infos of all
-		rest.Get("/ssb/api/set-like-info", GetAllSetLikes),
-
-		//get set like info of someone client
-		rest.Post("/ssb/api/set-like-info", GetSomeoneSetLikes),
+		/*
+			激励查询
+		*/
+		//get all or someones' reward information in PUB RULE
+		rest.Get("/ssb/api/get-reward-info", GetRewardInfo),
 	)
 	if err != nil {
 		level.Error(log).Log("make router err", err)
@@ -214,17 +244,17 @@ func initDb(ctx *cli.Context) error {
 
 	likedb, err := OpenPubDB(pubdatadir)
 	if err != nil {
-		fmt.Errorf(fmt.Sprintf("Failed to create database", err))
+		fmt.Println(fmt.Errorf("Failed to create database", err))
 	}
 
 	lstime, err := likedb.SelectLastScanTime()
 	if err != nil {
-		fmt.Errorf(fmt.Sprintf("Failed to init database", err))
+		fmt.Println(fmt.Errorf("Failed to init database", err))
 	}
 	if lstime == 0 {
 		_, err = likedb.UpdateLastScanTime(0)
 		if err != nil {
-			fmt.Errorf(fmt.Sprintf("Failed to init database", err))
+			fmt.Println(fmt.Errorf("Failed to init database", err))
 		}
 	}
 	lastAnalysisTimesnamp = lstime
@@ -289,10 +319,10 @@ func DoMessageTask(ctx *cli.Context) {
 		src, err := client.Source(longCtx, muxrpc.TypeJSON, muxrpc.Method{"createLogStream"}, args)
 		if err != nil {
 			//client可能失效,则需要重建新的连接,链接资源的释放在ssb-server端
-			fmt.Println(fmt.Sprintf(PrintTime()+"Source stream call failed: %w ,will try other tcp connect socket...", err))
+			fmt.Println(fmt.Errorf(PrintTime()+"Source stream call failed: %w ,will try other tcp connect socket...", err))
 			otherClient, err := newClient(ctx)
 			if err != nil {
-				fmt.Println(fmt.Sprintf(PrintTime()+"Try set up a ssb client tcp socket failed , will try again...", err))
+				fmt.Println(fmt.Errorf(PrintTime()+"Try set up a ssb client tcp socket failed , will try again...", err))
 				time.Sleep(time.Second * 10)
 				continue
 			}
@@ -405,7 +435,7 @@ func SsbMessageAnalysis(r *muxrpc.ByteSource) (int64, error) {
 		var msgStruct DeserializedMessageStu
 		err = json.Unmarshal(buf.Bytes(), &msgStruct)
 		if err != nil {
-			fmt.Println(fmt.Sprintf("Muxrpc.ByteSource Unmarshal to json err =%s", err))
+			fmt.Println(fmt.Errorf("Muxrpc.ByteSource Unmarshal to json err =%s", err))
 			return 0, err
 		}
 
@@ -420,7 +450,7 @@ func SsbMessageAnalysis(r *muxrpc.ByteSource) (int64, error) {
 		}
 		_, err = likeDB.InsertLikeDetail(msgkey, msgauther)
 		if err != nil {
-			fmt.Println(fmt.Sprintf(PrintTime()+"Failed to InsertLikeDetail", err))
+			fmt.Println(fmt.Errorf(PrintTime()+"Failed to InsertLikeDetail, err=%s", err))
 			return 0, err
 		}
 
@@ -446,7 +476,7 @@ func SsbMessageAnalysis(r *muxrpc.ByteSource) (int64, error) {
 						//统计我取消点赞的
 						_, err = likeDB.InsertUserSetLikeInfo(msgkey, msgauther, -1, msgTime)
 						if err != nil {
-							fmt.Println(fmt.Sprintf(PrintTime()+" %s set a unlike FAILED, err=%s", msgauther, err))
+							fmt.Println(fmt.Errorf(PrintTime()+" %s set a unlike FAILED, err=%s", msgauther, err))
 						}
 						fmt.Println(fmt.Sprintf(PrintTime()+" %s set a unlike, msgkey=%s", msgauther, msgkey))
 					} else {
@@ -454,12 +484,23 @@ func SsbMessageAnalysis(r *muxrpc.ByteSource) (int64, error) {
 						LikeDetail = append(LikeDetail, cvs.Vote.Link)
 						fmt.Println(PrintTime() + "  like-time: " + timesp + "---MessageKey: " + cvs.Vote.Link)
 
-						//统计我取消点赞的
+						//统计我点赞的
 						_, err = likeDB.InsertUserSetLikeInfo(msgkey, msgauther, 1, msgTime)
 						if err != nil {
-							fmt.Println(fmt.Sprintf(PrintTime()+" %s set a like FAILED, err=%s", msgauther, err))
+							fmt.Println(fmt.Errorf(PrintTime()+" %s set a like FAILED, err=%s", msgauther, err))
 						}
 						fmt.Println(fmt.Sprintf(PrintTime()+" %s set a like, msgkey=%s", msgauther, msgkey))
+
+						{ //发送激励
+							//如果点赞了，又取消了，不影响token的发放
+							name2addr, err := GetNodeProfile(msgauther)
+							if err != nil || len(name2addr) != 1 {
+								fmt.Println(fmt.Errorf(LikePost+" Reward %s ethereum address failed, err= not found or %s", msgauther, err))
+							} else {
+								ehtAddr := name2addr[0].EthAddress
+								go PubRewardToken(ehtAddr, int64(params.RewardOfLikePost), msgauther, LikePost, msgkey, msgTime)
+							}
+						}
 					}
 				}
 			} else {
@@ -477,7 +518,7 @@ func SsbMessageAnalysis(r *muxrpc.ByteSource) (int64, error) {
 						fmt.Sprintf("%v", cau.Name)
 				}
 			} else {
-				fmt.Println(fmt.Sprintf(PrintTime()+"Unmarshal for about , err %v", err))
+				fmt.Println(fmt.Errorf(PrintTime()+"Unmarshal for about , err %v", err))
 			}
 
 			//4、contact触发对blakclist的处理, 通过pub关注重新进来的黑名单的消息来持续block该账户
@@ -490,13 +531,13 @@ func SsbMessageAnalysis(r *muxrpc.ByteSource) (int64, error) {
 							//block he
 							err = contactSomeone(nil, ccs.Contact, true, true)
 							if err != nil {
-								fmt.Println(fmt.Sprintf(PrintTime()+"[black-list]Unfollow and Block %s FAILED, err=%s", ccs.Contact, err))
+								fmt.Println(fmt.Errorf(PrintTime()+"[black-list]Unfollow and Block %s FAILED, err=%s", ccs.Contact, err))
 							}
 							fmt.Println(fmt.Sprintf(PrintTime()+"[black-list]Unfollow and Block %s SUCCESS", ccs.Contact))
 						}
 					}
 				} else {
-					fmt.Println(fmt.Sprintf(PrintTime()+"[black-list]Unmarshal for contact, err %v", err))
+					fmt.Println(fmt.Errorf(PrintTime()+"[black-list]Unmarshal for contact, err %v", err))
 				}
 			}
 
@@ -518,7 +559,7 @@ func SsbMessageAnalysis(r *muxrpc.ByteSource) (int64, error) {
 						//fix:处理违规消息由 "直接block" 转为 "提供接口人工审核处理"
 						_, err = likeDB.InsertSensitiveWordRecord(params.PubID, nowUnixTime, postContent, msgkey, msgauther, "0")
 						if err != nil {
-							fmt.Println(fmt.Sprintf(PrintTime()+"[sensitive-check]InsertSensitiveWordRecord FAILED, err=%s", err))
+							fmt.Println(fmt.Errorf(PrintTime()+"[sensitive-check]InsertSensitiveWordRecord FAILED, err=%s", err))
 						}
 						fmt.Println(fmt.Sprintf(PrintTime()+"[sensitive-check]InsertSensitiveWordRecord SUCCESS, author=%s, message=%s, msgkey=%s", msgauther, postContent, msgkey))
 					}
@@ -526,17 +567,37 @@ func SsbMessageAnalysis(r *muxrpc.ByteSource) (int64, error) {
 					if cps.Root == "" && PostWordCountBigThan10(postContent) { //1-登录 2-发表帖子 3-评论 4-铸造NFT
 						_, err = likeDB.InsertUserTaskCollect(params.PubID, msgauther, msgkey, "2", "", msgTime, "", "", "")
 						if err != nil {
-							fmt.Println(fmt.Sprintf(PrintTime()+"[UserTaskCollect-post]InsertUserTaskCollect FAILED, err=%s", err))
+							fmt.Println(fmt.Errorf(PrintTime()+"[UserTaskCollect-post]InsertUserTaskCollect FAILED, err=%s", err))
 						}
 						fmt.Println(fmt.Sprintf(PrintTime()+"[UserTaskCollect-post]InsertUserTaskCollect SUCCESS, author=%s, msgkey=%s", msgauther, msgkey))
+
+						{ //发送激励
+							name2addr, err := GetNodeProfile(msgauther)
+							if err != nil || len(name2addr) != 1 {
+								fmt.Println(fmt.Errorf(PostMessage+" Reward %s ethereum address failed, err= not found or %s", msgauther, err))
+							} else {
+								ehtAddr := name2addr[0].EthAddress
+								go PubRewardToken(ehtAddr, int64(params.RewardOfPostMessage), msgauther, PostMessage, msgkey, msgTime)
+							}
+						}
 					}
 					//5.3我发表的comment
 					if cps.Root != "" && PostWordCountBigThan10(postContent) {
 						_, err = likeDB.InsertUserTaskCollect(params.PubID, msgauther, msgkey, "3", cps.Root, msgTime, "", "", "")
 						if err != nil {
-							fmt.Println(fmt.Sprintf(PrintTime()+"[UserTaskCollect-comment]InsertUserTaskCollect FAILED, err=%s", err))
+							fmt.Println(fmt.Errorf(PrintTime()+"[UserTaskCollect-comment]InsertUserTaskCollect FAILED, err=%s", err))
 						}
 						fmt.Println(fmt.Sprintf(PrintTime()+"[UserTaskCollect-comment]InsertUserTaskCollect SUCCESS, author=%s, msgkey=%s", msgauther, msgkey))
+
+						{ //发送激励
+							name2addr, err := GetNodeProfile(msgauther)
+							if err != nil || len(name2addr) != 1 {
+								fmt.Println(fmt.Errorf(PostComment+" Reward %s ethereum address failed, err= not found or %s", msgauther, err))
+							} else {
+								ehtAddr := name2addr[0].EthAddress
+								go PubRewardToken(ehtAddr, int64(params.RewardOfPostComment), msgauther, PostComment, msgkey, msgTime)
+							}
+						}
 					}
 				}
 			} else {
@@ -549,7 +610,7 @@ func SsbMessageAnalysis(r *muxrpc.ByteSource) (int64, error) {
 	for _, likeLink := range LikeDetail { //被点赞的ID集合,标记被点赞的记录
 		_, err := likeDB.UpdateLikeDetail(1, nowUnixTime, likeLink)
 		if err != nil {
-			fmt.Println(fmt.Sprintf(PrintTime()+"Failed to UpdateLikeDetail", err))
+			fmt.Println(fmt.Errorf(PrintTime()+"Failed to UpdateLikeDetail", err))
 			return 0, err
 		}
 	}
@@ -557,21 +618,21 @@ func SsbMessageAnalysis(r *muxrpc.ByteSource) (int64, error) {
 	for _, unLikeLink := range UnLikeDetail { //被取消点赞的ID集合
 		_, err := likeDB.UpdateLikeDetail(-1, nowUnixTime, unLikeLink)
 		if err != nil {
-			fmt.Println(fmt.Sprintf(PrintTime()+"Failed to UpdateLikeDetail", err))
+			fmt.Println(fmt.Errorf(PrintTime()+"Failed to UpdateLikeDetail", err))
 			return 0, err
 		}
 	}
 
 	_, err := likeDB.UpdateLastScanTime(nowUnixTime)
 	if err != nil {
-		fmt.Println(fmt.Sprintf(PrintTime()+"Failed to UpdateLastScanTime", err))
+		fmt.Println(fmt.Errorf(PrintTime()+"Failed to UpdateLastScanTime", err))
 		return 0, err
 	}
 	//更新table userethaddr
 	for key := range ClientID2Name {
 		_, err := likeDB.UpdateUserProfile(key, ClientID2Name[key], "")
 		if err != nil {
-			fmt.Println(fmt.Sprintf(PrintTime()+"Failed to UpdateUserEthAddr", err))
+			fmt.Println(fmt.Errorf(PrintTime()+"Failed to UpdateUserEthAddr", err))
 			return 0, err
 		}
 	}
@@ -589,7 +650,7 @@ func SsbMessageAnalysis(r *muxrpc.ByteSource) (int64, error) {
 }
 
 // ChannelDeal
-func NewChannelDeal(partnerAddress string) (err error) {
+func NewChannelDeal(partnerAddress string, clientID string, messageTime int64) (err error) {
 	photonNode := &PhotonNode{
 		Host:       "http://" + params.PhotonHost,
 		Address:    params.PhotonAddress,
@@ -604,25 +665,24 @@ func NewChannelDeal(partnerAddress string) (err error) {
 
 	channel00, err := photonNode.GetChannelWith(partnerNode, params.TokenAddress)
 	if err != nil {
-		fmt.Println(fmt.Sprintf(PrintTime()+"[Pub-Client-ChannelDeal-ERROR]GetChannelWithBigInterr %s", err))
+		fmt.Println(fmt.Errorf(PrintTime()+SignUp+" GetChannelWith %s", err))
 		return
 	}
 	if channel00 == nil {
 		//create new channel with 1 mlt
-		initRegistAmount := int64(params.MinBalanceInchannel + params.RegistrationAwarding)
+		initRegistAmount := int64(params.MinBalanceInchannel + params.RewardOfSignup)
 		err = photonNode.OpenChannel(partnerNode.Address, params.TokenAddress, new(big.Int).Mul(big.NewInt(params.Ether), big.NewInt(initRegistAmount)), params.SettleTime)
 		if err != nil {
-			fmt.Println(fmt.Sprintf(PrintTime()+"[Pub-Client-ChannelDeal-ERROR]create channel err %s", err))
+			fmt.Println(fmt.Errorf(PrintTime()+SignUp+" create channel, err=%s", err))
 			return
 		}
-		fmt.Println(fmt.Sprintf(PrintTime()+"[Pub-Client-ChannelDeal-OK]create channel success, with %s", partnerAddress))
+		fmt.Println(fmt.Sprintf(PrintTime()+SignUp+" create channel success[%s], with %s", clientID, partnerAddress))
 
 		netStatus := false
 		for i := 0; i < 20; i++ {
 			nodeS, err := photonNode.GetNodeStatus(partnerAddress)
 			if err != nil {
-				fmt.Println(fmt.Sprintf(PrintTime()+"[Pub-Client-ChannelDeal-ERROR]GetNodeStatus %s", err))
-				continue
+				fmt.Println(fmt.Errorf(PrintTime()+SignUp+" GetNodeStatus[%s], err=%s", clientID, err))
 			}
 			netStatus = nodeS.IsOnline
 			if netStatus {
@@ -630,46 +690,45 @@ func NewChannelDeal(partnerAddress string) (err error) {
 			}
 			time.Sleep(time.Second * 120)
 		}
-
-		/*netStatus, err = photonNode.GetNodeStatus(partnerAddress)
-		if err != nil {
-			fmt.Println(fmt.Sprintf(PrintTime()+"[Pub-Client-ChannelDeal-ERROR]GetNodeStatus %s", err))
-			return err
-		}*/
 		if !netStatus {
-			fmt.Println(fmt.Sprintf(PrintTime()+"[Pub-Client-ChannelDeal-ERROR]GetNodeStatus(retry 20 times) %s online= %s", partnerAddress, netStatus))
+			fmt.Println(fmt.Errorf(PrintTime()+SignUp+" GetNodeStatus[%s](retry 20 times) %s online=%v", clientID, partnerAddress, netStatus))
 			return errors.New("partner offline")
 		}
-
 		//registration award 新地址才发送注册激励
-		//err = sendToken(partnerAddress, int64(params.RegistrationAwarding), true, false)
-		amount := new(big.Int).Mul(big.NewInt(params.Ether), big.NewInt(int64(params.RegistrationAwarding)))
+		amount := new(big.Int).Mul(big.NewInt(params.Ether), big.NewInt(int64(params.RewardOfSignup)))
 		err = photonNode.SendTrans(params.TokenAddress, amount, partnerAddress, true, false)
 		if err != nil {
 			return err
 		}
-		fmt.Println(fmt.Sprintf(PrintTime()+"[Pub-Client-ChannelDeal-OK]send registration award to %s, err=%s", partnerAddress, err))
+		fmt.Println(fmt.Sprintf(PrintTime()+SignUp+" award[%s] to %s, err=%s", clientID, partnerAddress, err))
 
 		//继续发送SMT激励
-		err = photonNode.TransferSMT(partnerAddress, new(big.Int).Mul(big.NewInt(params.Ether), big.NewInt(int64(params.RegistrationAwardingSMT))).String())
+		err = photonNode.TransferSMT(partnerAddress, new(big.Int).Mul(big.NewInt(params.Ether), big.NewInt(int64(params.RewardOfSignupSMT))).String())
 		if err != nil {
 			return err
 		}
-		fmt.Println(fmt.Sprintf(PrintTime()+"[Pub-Client-ChannelDeal-OK]send registration award(SMT) to %s, err=%s", partnerAddress, err))
+		fmt.Println(fmt.Sprintf(PrintTime()+SignUp+" award(SMT)[%s] to %s, err=%s", clientID, partnerAddress, err))
+
+		{
+			//=======Record Reward Result=======
+			nowTime := time.Now().UnixNano() / 1e6
+			_, err = likeDB.RecordRewardResult(clientID, partnerAddress, "success", amount.Int64(), SignUp, "", messageTime, nowTime)
+			fmt.Println(fmt.Sprintf(PrintTime()+"===> Pub[RecordRewardResult] reword to eth-address=%s for clientid=%s, reason=%s, err=%s", partnerAddress, clientID, err))
+		}
 
 	} else {
-		fmt.Println(fmt.Sprintf(PrintTime()+"[Pub-Client-ChannelDeal-OK]channel has exist, with %s", partnerAddress))
+		fmt.Println(fmt.Errorf(PrintTime()+"[Pub-Client-ChannelDeal-OK]channel has exist[%s], with %s", clientID, partnerAddress))
 	}
 
 	return
 }
 
-// sendToken  pub paid additionally
+// PubRewardToken  pub paid additionally
 // It is stipulated that 'the award' needs to be paid additionally by pub, and the 'min-balance-inchannel' is not used
-func sendToken(partnerAddress string, xamount int64, isdirect, sync bool) (err error) {
+func PubRewardToken(partnerAddress string, xamount int64, clientID, reason, messageKey string, messageTime int64) (err error) {
 	_, err = HexToAddress(partnerAddress)
 	if err != nil {
-		err = fmt.Errorf("[sendToken]verify eth-address [%s] error=%s", partnerAddress, err)
+		err = fmt.Errorf("[sendToken]verify eth-address=[%s], error=%s", partnerAddress, err)
 		return
 	}
 	photonNode := &PhotonNode{
@@ -678,13 +737,54 @@ func sendToken(partnerAddress string, xamount int64, isdirect, sync bool) (err e
 		APIAddress: params.PhotonHost,
 		DebugCrash: false,
 	}
+	netStatus := false
+	for i := 0; i < 18; i++ {
+		nodeS, err := photonNode.GetNodeStatus(partnerAddress)
+		if err != nil {
+			fmt.Println(fmt.Sprintf(PrintTime()+reason+"[sendToken]GetNodeStatus, err=%s", err))
+		}
+		netStatus = nodeS.IsOnline
+		if netStatus {
+			break
+		}
+		time.Sleep(time.Second * 10)
+	}
+	if ExceedRewardLimit(clientID, reason) {
+		fmt.Println(fmt.Errorf(PrintTime()+reason+" reward %s to ethaddr=%s REJECT,reason:ExceedRewardLimit", clientID, partnerAddress))
+		return
+	}
 	amount := new(big.Int).Mul(big.NewInt(params.Ether), big.NewInt(xamount))
+	if !netStatus {
+		fmt.Println(fmt.Errorf(PrintTime()+reason+"[sendToken]GetNodeStatus(retry 120 minites) %s online= %s", partnerAddress, netStatus))
+		//如果此时客户端不在线，则先记录，后续补发
+		{
+			//=======Record Reward Result=======
+			_, err = likeDB.RecordRewardResult(clientID, partnerAddress, "fail", amount.Int64(), reason, messageKey, messageTime, 0)
+			fmt.Println(fmt.Sprintf(PrintTime()+"===> Pub[RecordRewardResult] reword to eth-address=%s for clientid=%s, reason=%s, err=%s", partnerAddress, clientID, err))
+		}
+		return errors.New("partner offline")
+	}
+
 	err = photonNode.Deposit(partnerAddress, params.TokenAddress, amount, 48)
 	if err != nil {
-		fmt.Println(fmt.Sprintf("Deposit error=%s", err))
+		fmt.Println(fmt.Errorf(PrintTime()+reason+"Deposit error=%s", err))
 		return err
 	}
-	err = photonNode.SendTrans(params.TokenAddress, amount, partnerAddress, isdirect, sync)
+	err = photonNode.SendTrans(params.TokenAddress, amount, partnerAddress, true, false)
+	if err != nil {
+		fmt.Println(fmt.Errorf(PrintTime()+reason+"SendTrans error=%s", err))
+		return err
+	}
+	fmt.Println(fmt.Sprintf(PrintTime()+reason+" reward %s to ethaddr=%s SUCCESS", clientID, partnerAddress))
+	{
+		//=======Record Reward Result=======
+		nowTime := time.Now().UnixNano() / 1e6
+		_, err = likeDB.RecordRewardResult(clientID, partnerAddress, "success", amount.Int64(), reason, messageKey, messageTime, nowTime)
+		if err != nil {
+			fmt.Println(fmt.Sprintf(PrintTime()+"===> Pub[RecordRewardResult] reword to eth-address=%s for clientid=%s, reason=%s, FAILED, err=%s", partnerAddress, clientID, reason, err))
+		}
+		fmt.Println(fmt.Sprintf(PrintTime()+"===> Pub[RecordRewardResult] reword to eth-address=%s for clientid=%s, reason=%s, SUCCESS", partnerAddress, clientID, reason))
+	}
 	return
 }
 
@@ -730,7 +830,7 @@ func checkPubChannelBalance() (err error) {
 func IsBlackList(defendant string) bool {
 	blacklists, err := likeDB.SelectViolationByWhere("", defendant, "", "", "1")
 	if err != nil {
-		fmt.Println(fmt.Sprintf(PrintTime()+"selectBlacklist-Failed to get blacklist, err=%s", err))
+		fmt.Println(fmt.Errorf(PrintTime()+"selectBlacklist-Failed to get blacklist, err=%s", err))
 		return false
 	}
 	if len(blacklists) > 0 {

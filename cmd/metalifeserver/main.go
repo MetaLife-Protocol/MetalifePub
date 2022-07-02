@@ -210,13 +210,13 @@ func initClient(ctx *cli.Context) error {
 	if reportrewarding < 0 {
 		return fmt.Errorf("report-rewarding %v error", reportrewarding)
 	}
-	params.ReportRewarding = reportrewarding
+	params.RewardOfReportProblematicPost = reportrewarding
 
 	registrationawarding := ctx.Int("registration-rewarding")
 	if registrationawarding < 0 {
 		return fmt.Errorf("registration-rewarding %v error", registrationawarding)
 	}
-	params.RegistrationAwarding = registrationawarding
+	params.RewardOfSignup = registrationawarding
 
 	sensitivewordsfilepath := ctx.String("sensitive-words-file")
 	if sensitivewordsfilepath == "" {

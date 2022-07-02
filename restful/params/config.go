@@ -66,14 +66,29 @@ var MinBalanceInchannel = 1
 // PubID this
 var PubID = ""
 
-// ReportRewarding default 0
-var ReportRewarding = 0
+// RewardOfReportProblematicPost default 0
+var RewardOfReportProblematicPost = 100
 
-// RegistrationAwarding
-var RegistrationAwarding = 1000
+// RewardOfSignup
+var RewardOfSignup = 1000
 
-// RegistrationAwarding
-var RegistrationAwardingSMT = 50
+// RewardOfSignupSMT
+var RewardOfSignupSMT = 50
+
+// RewardOfDailyLogin
+var RewardOfDailyLogin = 10
+
+// RewardOfPostMessage
+var RewardOfPostMessage = 5
+
+// RewardOfPostComment
+var RewardOfPostComment = 2
+
+// RewardOfMintNft
+var RewardOfMintNft = 10
+
+// RewardOfLikePost
+var RewardOfLikePost = 1
 
 // SensitiveWordsFilePath
 var SensitiveWordsFilePath = ""

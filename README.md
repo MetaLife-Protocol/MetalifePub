@@ -492,6 +492,79 @@ Response e.g:
 }
 ```
 
+16.get all or someones' reward information order by PUB RULE
+
+```bash
+POST http://{ssb-server-public-ip}:18008/ssb/api/get-reward-info
+```
+Body: (or null)
+```json
+{
+    "client_id":"@P2AR780TWII9tJXYfarlqAlU74hcU11XQ6ZdkPuv19A=.ed25519",
+    "time_from":0,
+    "time_to":1656863999000
+}
+```
+Response e.g: 
+```json
+{
+    "error_code": 0,
+    "error_message": "SUCCESS",
+    "data": [
+        {
+            "client_id": "@P2AR780TWII9tJXYfarlqAlU74hcU11XQ6ZdkPuv19A=.ed25519",
+            "client_eth_address": "0xea753b41854D37bAD352Cd7464F104421d325BD1",
+            "grant_success": "success",
+            "grant_token_amount": 1000000000000000000,
+            "reward_reason": "like a post",
+            "message_key": "%O7FkxpIFdX2W8RF3YpBmQBsQ26K2k376vavvwIsDRWk=.sha256",
+            "message_time": 1656800926053,
+            "reward_time": 1656800982331
+        },
+        {
+            "client_id": "@P2AR780TWII9tJXYfarlqAlU74hcU11XQ6ZdkPuv19A=.ed25519",
+            "client_eth_address": "0xea753b41854D37bAD352Cd7464F104421d325BD1",
+            "grant_success": "success",
+            "grant_token_amount": 10000000000000000000,
+            "reward_reason": "daily login",
+            "message_key": "",
+            "message_time": 1656801371198,
+            "reward_time": 1656801433901
+        },
+        {
+            "client_id": "@P2AR780TWII9tJXYfarlqAlU74hcU11XQ6ZdkPuv19A=.ed25519",
+            "client_eth_address": "0xea753b41854D37bAD352Cd7464F104421d325BD1",
+            "grant_success": "success",
+            "grant_token_amount": 5000000000000000000,
+            "reward_reason": "post message",
+            "message_key": "%7TNo6zaiYsYQgpB5E3cIvvV21XeRRMd6qaDP6+xsfw4=.sha256",
+            "message_time": 1656801880962,
+            "reward_time": 1656801991149
+        },
+        {
+            "client_id": "@P2AR780TWII9tJXYfarlqAlU74hcU11XQ6ZdkPuv19A=.ed25519",
+            "client_eth_address": "0xea753b41854D37bAD352Cd7464F104421d325BD1",
+            "grant_success": "success",
+            "grant_token_amount": 2000000000000000000,
+            "reward_reason": "post comment",
+            "message_key": "%kEATQayHCKeq9kQlSFq4QB+DZSjgQxebeV5U+5/VBRo=.sha256",
+            "message_time": 1656802265942,
+            "reward_time": 1656802480744
+        },
+        {
+            "client_id": "@P2AR780TWII9tJXYfarlqAlU74hcU11XQ6ZdkPuv19A=.ed25519",
+            "client_eth_address": "0xea753b41854D37bAD352Cd7464F104421d325BD1",
+            "grant_success": "success",
+            "grant_token_amount": 10000000000000000000,
+            "reward_reason": "mint a nft",
+            "message_key": "",
+            "message_time": 1656802714262,
+            "reward_time": 1656802774163
+        }
+    ]
+}
+```
+
 3.Channel establishment and pre-deposit service  
 After receiving the ETH address registration message, the  MetaLife server will actively establish a channel with the client to obtain rewards , on Spectrum Main Chain.
 

@@ -170,3 +170,24 @@ type ReqCreatedNFT struct {
 	NftTokenId     string `json:"nft_token_id"`
 	NftStoredUrl   string `json:"nft_store_url"`
 }
+
+// RewardResult
+type RewardResult struct {
+	ClientID         string `json:"client_id"`
+	ClientEthAddress string `json:"client_eth_address"`
+	GrantSuccess     string `json:"grant_success"`
+	GrantTokenAmount int64  `json:"grant_token_amount"`
+	RewardReason     string `json:"reward_reason"`
+	MessageKey       string `json:"message_key"`
+	MessageTime      int64  `json:"message_time"`
+	RewardTime       int64  `json:"reward_time"`
+}
+
+// RewardingReq
+type RewardingReq struct {
+	ClientID string `json:"client_id"`
+	//GrantSuccess string `json:"grant_success"`
+	//RewardReason string `json:"reward_reason"`
+	TimeFrom int64 `json:"time_from"`
+	TimeTo   int64 `json:"time_to"`
+}
