@@ -669,6 +669,11 @@ func NewChannelDeal(partnerAddress string, clientID string, messageTime int64) (
 		return
 	}
 	if channel00 == nil {
+		if ExceedRewardLimit(clientID, SignUp) {
+			//如果一个SSB-ID连续注册地址达到2次以上，则该账号以后无法得到注册激励
+			fmt.Println(fmt.Errorf(PrintTime()+SignUp+" reward %s to ethaddr=%s REJECT,reason:ExceedRewardLimit", clientID, partnerAddress))
+			return
+		}
 		//create new channel with 1 mlt
 		initRegistAmount := int64(params.MinBalanceInchannel + params.RewardOfSignup)
 		err = photonNode.OpenChannel(partnerNode.Address, params.TokenAddress, new(big.Int).Mul(big.NewInt(params.Ether), big.NewInt(initRegistAmount)), params.SettleTime)

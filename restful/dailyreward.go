@@ -45,7 +45,12 @@ func ExceedRewardLimit(clientID, rewardType string) bool {
 		return true
 	}
 	historyTokens := big.NewInt(int64(num))
-	maxRewardTokes := new(big.Int).Mul(big.NewInt(params.Ether), big.NewInt(int64(params.MaxDailyRewarding)))
+	maxRewardTokes := big.NewInt(0)
+	if rewardType == SignUp {
+		maxRewardTokes = new(big.Int).Mul(big.NewInt(params.Ether), big.NewInt(int64(params.MaxSignupReward)))
+	} else {
+		maxRewardTokes = new(big.Int).Mul(big.NewInt(params.Ether), big.NewInt(int64(params.MaxDailyRewarding)))
+	}
 	if historyTokens.Cmp(maxRewardTokes) == -1 {
 		return false
 	} else {

@@ -167,6 +167,7 @@ func (pdb *PubDB) SelectHistoryReward(clientId, rewardreason string, starttime, 
 	if err != nil {
 		return 0, err
 	}
+	awardTokenNum = 0
 	defer rows.Close()
 	for rows.Next() {
 		var awardtokennum int64
