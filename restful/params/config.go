@@ -66,7 +66,7 @@ var MinBalanceInchannel = 1
 // PubID this
 var PubID = ""
 
-// RewardOfReportProblematicPost default 0
+// RewardOfReportProblematicPost default 100
 var RewardOfReportProblematicPost = 100
 
 // RewardOfSignup

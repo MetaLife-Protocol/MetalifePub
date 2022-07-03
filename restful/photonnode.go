@@ -260,14 +260,18 @@ func (node *PhotonNode) Deposit(partnerAddress, tokenAddress string, balance *bi
 	}
 
 	//UDP通信时间不定，deposit异步，需要验证通道余额
-	for i = 0; i < 75; i++ {
+	var j int
+	for j = 0; j < 90; j++ {
 		time.Sleep(time.Second)
 		cx, err := node.SpecifiedChannel(ch.ChannelIdentifier)
+		fmt.Println(fmt.Sprintf("check (%d) partnerAddress=%s, balance of before\t:%v", j, partnerAddress, nodeBalanceBeforeDeposit))
+		fmt.Println(fmt.Sprintf("check (%d) partnerAddress=%s, balance of balance\t:%v", j, partnerAddress, balance))
+		fmt.Println(fmt.Sprintf("check (%d) partnerAddress=%s, balance of now\t:%v", j, partnerAddress, cx.Balance))
 		if err == nil && cx.Balance.Cmp(new(big.Int).Add(nodeBalanceBeforeDeposit, balance)) == 0 {
 			break
 		}
 	}
-	if i == ws {
+	if j == 90 {
 		return errors.New("check result of Deposit timeout")
 	}
 

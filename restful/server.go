@@ -772,12 +772,12 @@ func PubRewardToken(partnerAddress string, xamount int64, clientID, reason, mess
 
 	err = photonNode.Deposit(partnerAddress, params.TokenAddress, amount, 48)
 	if err != nil {
-		fmt.Println(fmt.Errorf(PrintTime()+reason+"Deposit error=%s", err))
+		fmt.Println(fmt.Errorf(PrintTime()+reason+" [sendToken]Deposit error=%s", err))
 		return err
 	}
 	err = photonNode.SendTrans(params.TokenAddress, amount, partnerAddress, true, false)
 	if err != nil {
-		fmt.Println(fmt.Errorf(PrintTime()+reason+"SendTrans error=%s", err))
+		fmt.Println(fmt.Errorf(PrintTime()+reason+" [sendToken]SendTrans error=%s", err))
 		return err
 	}
 	fmt.Println(fmt.Sprintf(PrintTime()+reason+" reward %s to ethaddr=%s SUCCESS", clientID, partnerAddress))
@@ -822,7 +822,7 @@ func checkPubChannelBalance() (err error) {
 			//补充至MinBalanceInchannel
 			err0 := pubNode.Deposit(clientaddrStr, params.TokenAddress, diffNum, 48)
 			if err0 != nil {
-				err = fmt.Errorf("[Pub-CheckPubChannelBalance]between pub %v and %v client,Deposit to channel err=", params.PhotonAddress, clientaddrStr, err0)
+				err = fmt.Errorf("[Pub-CheckPubChannelBalance]between pub %v and %v client,Deposit to channel err=%s", params.PhotonAddress, clientaddrStr, err0)
 				continue
 			}
 			fmt.Println(fmt.Sprintf(PrintTime()+"[Pub-CheckPubChannelBalance]between pub %v and %v client,Deposit to channel success, num=%v", params.PhotonAddress, clientaddrStr, err0, diffNum))
