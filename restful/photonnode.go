@@ -182,6 +182,34 @@ func (node *PhotonNode) SendTrans(tokenAddress string, amount *big.Int, targetAd
 	return err
 }
 
+func (node *PhotonNode) CheckChannelExist(partnerAddress, tokenAddress string) bool {
+	//记录deposit之前的通道余额
+	partners, err := node.TokenPartners(tokenAddress)
+	if err != nil {
+		fmt.Println(fmt.Sprintf("CheckChannelExist err :%s when get node-balance in this channel before deposit", err))
+		return false
+	}
+	if len(partners) == 0 {
+		fmt.Println(fmt.Sprintf("CheckChannelExist err :%s,no channel between %s and %s in token %s", err, node.Address, partnerAddress, tokenAddress))
+		return false
+	}
+	channelInfo := ""
+	for _, data := range partners {
+		if data.PartnerAddress == partnerAddress {
+			channelInfo = data.Channel
+			break
+		}
+	}
+	//"api/1/channles/0x9244a7c2bec98b59005656c5c98dba3ee394ccfd7710810a6af39929ca3d25a0"
+	channelInfo = strings.Split(channelInfo, "/")[3]
+	_, err = node.SpecifiedChannel(channelInfo)
+	if err != nil {
+		fmt.Println(fmt.Sprintf("CheckChannelExist err when get SpecifiedChannel:%s", err))
+		return false
+	}
+	return true
+}
+
 func (node *PhotonNode) Deposit(partnerAddress, tokenAddress string, balance *big.Int, waitSeconds ...int) error {
 	type OpenChannelPayload struct {
 		PartnerAddress string   `json:"partner_address"`
@@ -264,9 +292,9 @@ func (node *PhotonNode) Deposit(partnerAddress, tokenAddress string, balance *bi
 	for j = 0; j < 90; j++ {
 		time.Sleep(time.Second)
 		cx, err := node.SpecifiedChannel(ch.ChannelIdentifier)
-		fmt.Println(fmt.Sprintf("check (%d) partnerAddress=%s, balance of before\t:%v", j, partnerAddress, nodeBalanceBeforeDeposit))
+		/*fmt.Println(fmt.Sprintf("check (%d) partnerAddress=%s, balance of before\t:%v", j, partnerAddress, nodeBalanceBeforeDeposit))
 		fmt.Println(fmt.Sprintf("check (%d) partnerAddress=%s, balance of balance\t:%v", j, partnerAddress, balance))
-		fmt.Println(fmt.Sprintf("check (%d) partnerAddress=%s, balance of now\t:%v", j, partnerAddress, cx.Balance))
+		fmt.Println(fmt.Sprintf("check (%d) partnerAddress=%s, balance of now\t:%v", j, partnerAddress, cx.Balance))*/
 		if err == nil && cx.Balance.Cmp(new(big.Int).Add(nodeBalanceBeforeDeposit, balance)) == 0 {
 			break
 		}

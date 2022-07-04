@@ -173,6 +173,13 @@ func Start(ctx *cli.Context) {
 
 	//go dealBlacklist()
 
+	//检查pub 与 所有metalife内已注册eth地址的账户的通道余额，按规定补充
+	//每隔10分钟检查一次
+	go checkPubChannelBalance()
+
+	//补发激励，
+	go backPay()
+
 	<-quitSignal
 	err = server.Shutdown(context.Background())
 	if err != nil {
@@ -343,9 +350,6 @@ func DoMessageTask(ctx *cli.Context) {
 		var calcsumthisTurn = len(TempMsgMap)
 		fmt.Println(fmt.Sprintf(PrintTime()+"A round of message data analysis has been completed ,from TimeSanmp [%v] to [%v] ,message number = [%d]", lastAnalysisTimesnamp, calcComplateTime, calcsumthisTurn))
 		lastAnalysisTimesnamp = calcComplateTime
-
-		//检查pub 与 所有metalife内已注册eth地址的账户的通道余额，按规定补充
-		checkPubChannelBalance()
 
 		time.Sleep(params.MsgScanInterval)
 	}
@@ -770,11 +774,23 @@ func PubRewardToken(partnerAddress string, xamount int64, clientID, reason, mess
 		return errors.New("partner offline")
 	}
 
-	err = photonNode.Deposit(partnerAddress, params.TokenAddress, amount, 48)
+	/*err = photonNode.Deposit(partnerAddress, params.TokenAddress, amount, 48)
 	if err != nil {
 		fmt.Println(fmt.Errorf(PrintTime()+reason+" [sendToken]Deposit error=%s", err))
 		return err
-	}
+	}*/
+	//直接链下转，保证通道有足够的余额
+	/*channelexist := photonNode.CheckChannelExist(partnerAddress, params.TokenAddress)
+	if !channelexist {
+		fmt.Println(fmt.Sprintf(PrintTime()+reason+" reward %s to ethaddr=%s FAILED, because channel not exist", clientID, partnerAddress))
+		{
+			//=======Record Reward Result=======
+			_, err = likeDB.RecordRewardResult(clientID, partnerAddress, "fail", amount.Int64(), reason, messageKey, messageTime, 0)
+			fmt.Println(fmt.Sprintf(PrintTime()+"===> Pub[RecordRewardResult] reword to eth-address=%s for clientid=%s, reason=%s, err=%s", partnerAddress, clientID, err))
+		}
+		return errors.New("channel no exist with " + partnerAddress)
+	}*/
+	//如果不在线了，查询通道没有任何意义
 	err = photonNode.SendTrans(params.TokenAddress, amount, partnerAddress, true, false)
 	if err != nil {
 		fmt.Println(fmt.Errorf(PrintTime()+reason+" [sendToken]SendTrans error=%s", err))
@@ -793,13 +809,17 @@ func PubRewardToken(partnerAddress string, xamount int64, clientID, reason, mess
 	return
 }
 
-func checkPubChannelBalance() (err error) {
+func checkPubChannelBalance() {
+	time.Sleep(time.Second * 5) //数据库可能没准备好
 	name2addr, err := GetAllNodesProfile()
 	for _, info := range name2addr {
 		clientaddrStr := info.EthAddress
+		if clientaddrStr == "" {
+			continue
+		}
 		_, err = HexToAddress(clientaddrStr)
 		if err != nil {
-			err = fmt.Errorf("[Pub-CheckPubChannelBalance]verify clientid [%v] 's ETH-ADDRSS error=%s", info.ID, err)
+			fmt.Println(fmt.Errorf("[Pub-CheckPubChannelBalance]verify clientid=[%s] 's eth-address=%s, error=%s", info.ID, clientaddrStr, err))
 			continue
 		}
 		pubNode := &PhotonNode{
@@ -812,7 +832,7 @@ func checkPubChannelBalance() (err error) {
 			&PhotonNode{Address: clientaddrStr, DebugCrash: false},
 			params.TokenAddress)
 		if err != nil || channelX == nil {
-			err = fmt.Errorf("[Pub-CheckPubChannelBalance]between pub %v and %v client,there has no channel,so no work todo", params.PhotonAddress, clientaddrStr)
+			fmt.Println(fmt.Errorf("[Pub-CheckPubChannelBalance]between pub %v and %v client,there has no channel,so no work todo", params.PhotonAddress, clientaddrStr))
 			continue
 		}
 		var minNum = new(big.Int).Mul(big.NewInt(params.Ether), big.NewInt(int64(params.MinBalanceInchannel)))
@@ -822,14 +842,19 @@ func checkPubChannelBalance() (err error) {
 			//补充至MinBalanceInchannel
 			err0 := pubNode.Deposit(clientaddrStr, params.TokenAddress, diffNum, 48)
 			if err0 != nil {
-				err = fmt.Errorf("[Pub-CheckPubChannelBalance]between pub %v and %v client,Deposit to channel err=%s", params.PhotonAddress, clientaddrStr, err0)
+				fmt.Println(fmt.Errorf("[Pub-CheckPubChannelBalance]between pub %v and %v client,Deposit to channel err=%s", params.PhotonAddress, clientaddrStr, err0))
 				continue
 			}
-			fmt.Println(fmt.Sprintf(PrintTime()+"[Pub-CheckPubChannelBalance]between pub %v and %v client,Deposit to channel success, num=%v", params.PhotonAddress, clientaddrStr, err0, diffNum))
+			fmt.Println(fmt.Sprintf(PrintTime()+"[Pub-CheckPubChannelBalance]between pub %v and %v client,Deposit to channel SUCCESS, num=%v", params.PhotonAddress, clientaddrStr, diffNum))
 		}
 		time.Sleep(time.Second)
 	}
-	return
+
+	time.AfterFunc(10*time.Minute, checkPubChannelBalance)
+}
+
+func backPay() {
+
 }
 
 func IsBlackList(defendant string) bool {

@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"sync"
 
+	"math/big"
+
 	_ "github.com/mattn/go-sqlite3"
 	"go.cryptoscope.co/ssb/restful/params"
 )
@@ -89,7 +91,7 @@ CREATE TABLE IF NOT EXISTS "rewardresult" (
    "clientid" TEXT NULL,
    "ethaddress" TEXT NULL,
    "grantsuccess" TEXT NULL,
-   "granttoken" INTEGER NULL default 0,
+   "granttoken" BIGINT NULL default 0,
    "rewardreason" TEXT NULL,
    "messagekey" TEXT NULL,
    "messagetime" INTEGER NULL default 0,
@@ -105,6 +107,7 @@ CREATE TABLE IF NOT EXISTS "rewardresult" (
 
 // InsertRewardResult
 func (pdb *PubDB) RecordRewardResult(clientId, ethAddress, grantSuccess string, grantToken int64, rewardReason, messageKey string, messageTime, rewardTime int64) (lastid int64, err error) {
+	grantToken = grantToken / params.Ether
 	stmt, err := pdb.db.Prepare("INSERT INTO rewardresult(clientid,ethaddress,grantsuccess,granttoken,rewardreason,messagekey,messagetime,rewardtime) VALUES (?,?,?,?,?,?,?,?)")
 	if err != nil {
 		return 0, err
@@ -145,11 +148,12 @@ func (pdb *PubDB) SelectRewardResult(clientid string, timefrom, timeto int64) (r
 			return nil, err
 		}
 		var r *RewardResult
+		amount := new(big.Int).Mul(big.NewInt(params.Ether), big.NewInt(granttoken))
 		r = &RewardResult{
 			ClientID:         cid,
 			ClientEthAddress: ethaddr,
 			GrantSuccess:     grantsuccess,
-			GrantTokenAmount: granttoken,
+			GrantTokenAmount: amount,
 			RewardReason:     reason,
 			MessageKey:       megkey,
 			MessageTime:      msgtime,

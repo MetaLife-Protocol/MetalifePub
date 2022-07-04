@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"time"
 
+	"math/big"
+
 	refs "go.mindeco.de/ssb-refs"
 )
 
@@ -173,14 +175,14 @@ type ReqCreatedNFT struct {
 
 // RewardResult
 type RewardResult struct {
-	ClientID         string `json:"client_id"`
-	ClientEthAddress string `json:"client_eth_address"`
-	GrantSuccess     string `json:"grant_success"`
-	GrantTokenAmount int64  `json:"grant_token_amount"`
-	RewardReason     string `json:"reward_reason"`
-	MessageKey       string `json:"message_key"`
-	MessageTime      int64  `json:"message_time"`
-	RewardTime       int64  `json:"reward_time"`
+	ClientID         string   `json:"client_id"`
+	ClientEthAddress string   `json:"client_eth_address"`
+	GrantSuccess     string   `json:"grant_success"`
+	GrantTokenAmount *big.Int `json:"grant_token_amount"`
+	RewardReason     string   `json:"reward_reason"`
+	MessageKey       string   `json:"message_key"`
+	MessageTime      int64    `json:"message_time"`
+	RewardTime       int64    `json:"reward_time"`
 }
 
 // RewardingReq
