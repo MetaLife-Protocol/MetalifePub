@@ -98,3 +98,9 @@ var MaxDailyRewarding = 500
 
 // MaxSignupReward
 var MaxSignupReward = 2000
+
+//RoundTimeOfBackPay
+var RoundTimeOfBackPay = time.Minute * 10
+
+//RoundTimeOfCheckChannelBalance
+var RoundTimeOfCheckChannelBalance = time.Minute * 10

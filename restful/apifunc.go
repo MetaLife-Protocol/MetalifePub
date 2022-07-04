@@ -36,20 +36,6 @@ func GetRewardInfo(w rest.ResponseWriter, r *rest.Request) {
 	resp = NewAPIResponse(err, rresult)
 }
 
-/*
-// RewardingResult
-type RewardingResult struct {
-	ClientID         string   `json:"client_id"`
-	ClientEthAddress int64    `json:"client_eth_address"`
-	GrantSuccess     string   `json:"grant_success"`
-	GrantToken1e18   *big.Int `json:"grant_token_1e18"`
-	RewardReason     string   `json:"reward_reason"`
-	MessageKey       string   `json:"message_key"`
-	MessageTime      string   `json:"message_time"`
-	RewardTime       string   `json:"reward_time"`
-}
-*/
-
 // GetAllSetLikes
 func GetAllSetLikes(w rest.ResponseWriter, r *rest.Request) {
 	var resp *APIResponse

@@ -105,6 +105,20 @@ CREATE TABLE IF NOT EXISTS "rewardresult" (
 	return &PubDB{db: db}, nil
 }
 
+// UpdateRewardResult
+func (pdb *PubDB) UpdateRewardResult(cid, partnerAddress, grantSuccess string, msgTime int64) (affectid int64, err error) {
+	stmt, err := pdb.db.Prepare("update rewardresult set grantsuccess=? where clientid=? and ethaddress=? and messagetime=?")
+	if err != nil {
+		return 0, err
+	}
+	res, err := stmt.Exec(grantSuccess, cid, partnerAddress, msgTime)
+	if err != nil {
+		return 0, err
+	}
+	affectid, err = res.LastInsertId()
+	return
+}
+
 // InsertRewardResult
 func (pdb *PubDB) RecordRewardResult(clientId, ethAddress, grantSuccess string, grantToken int64, rewardReason, messageKey string, messageTime, rewardTime int64) (lastid int64, err error) {
 	grantToken = grantToken / params.Ether

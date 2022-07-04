@@ -641,7 +641,6 @@ func SsbMessageAnalysis(r *muxrpc.ByteSource) (int64, error) {
 		}
 	}
 	//fmt.Println(fmt.Sprintf(PrintTime()+"A round of message data analysis has been completed ,message number = [%v]", len(TempMsgMap)))
-
 	/*//print for test
 	for key,value := range TempMsgMap {
 		fmt.Println(key, "<-this round message ID---ClientID->", value.Author)
@@ -649,7 +648,6 @@ func SsbMessageAnalysis(r *muxrpc.ByteSource) (int64, error) {
 	for key := range ClientID2Name { //取map中的值err
 		fmt.Println(key, "<-ClientID---Name->", ClientID2Name[key])
 	}*/
-
 	return nowUnixTime, nil
 }
 
@@ -750,7 +748,7 @@ func PubRewardToken(partnerAddress string, xamount int64, clientID, reason, mess
 	for i := 0; i < 18; i++ {
 		nodeS, err := photonNode.GetNodeStatus(partnerAddress)
 		if err != nil {
-			fmt.Println(fmt.Sprintf(PrintTime()+reason+"[sendToken]GetNodeStatus, err=%s", err))
+			fmt.Println(fmt.Sprintf(PrintTime()+reason+"[sendToken]GetNodeStatus[%s], err=%s", partnerAddress, err))
 		}
 		netStatus = nodeS.IsOnline
 		if netStatus {
@@ -850,11 +848,50 @@ func checkPubChannelBalance() {
 		time.Sleep(time.Second)
 	}
 
-	time.AfterFunc(10*time.Minute, checkPubChannelBalance)
+	time.AfterFunc(params.RoundTimeOfCheckChannelBalance, checkPubChannelBalance)
 }
 
 func backPay() {
-
+	time.Sleep(time.Second * 5) //数据库可能没准备好
+	rinfos, err := likeDB.SelectRewardResult("", 0, time.Now().UnixNano()/1e6)
+	if err != nil {
+		fmt.Println(fmt.Errorf("[Pub-backPay]SelectRewardResult err=%s", err))
+	}
+	for _, info := range rinfos {
+		if info.GrantSuccess == "fail" {
+			partnerAddress := info.ClientEthAddress
+			amount := info.GrantTokenAmount
+			cid := info.ClientID
+			msgtime := info.MessageTime
+			photonNode := &PhotonNode{
+				Host:       "http://" + params.PhotonHost,
+				Address:    params.PhotonAddress,
+				APIAddress: params.PhotonHost,
+				DebugCrash: false,
+			}
+			netStatus := false
+			nodeS, err := photonNode.GetNodeStatus(partnerAddress)
+			if err != nil {
+				fmt.Println(fmt.Sprintf(PrintTime()+" [Pub-backPay]GetNodeStatus[], err=%s", partnerAddress, err))
+			}
+			netStatus = nodeS.IsOnline
+			if netStatus {
+				err = photonNode.SendTrans(params.TokenAddress, amount, partnerAddress, true, false)
+				if err != nil {
+					fmt.Println(fmt.Errorf(PrintTime()+" [Pub-backPay] back pay to partnerAddress=%s, ClientID=%s, error=%s", partnerAddress, cid, err))
+					continue
+				}
+				_, err = likeDB.UpdateRewardResult(cid, partnerAddress, "success", msgtime)
+				if err != nil {
+					fmt.Println(fmt.Errorf(PrintTime()+" [Pub-backPay] back pay to partnerAddress=%s, ClientID=%s success,but RecordRewardResult error=%s", partnerAddress, cid, err))
+				}
+				fmt.Println(fmt.Sprintf(PrintTime()+" [Pub-backPay] back pay to partnerAddress=%s, ClientID=%s SUCCESS", partnerAddress, cid))
+			} else {
+				//fmt.Println(fmt.Errorf(PrintTime()+" [Pub-backPay] back pay to partnerAddress=%s, ClientID=%s failed, because node is not online", partnerAddress, cid))
+			}
+		}
+	}
+	time.AfterFunc(params.RoundTimeOfBackPay, backPay)
 }
 
 func IsBlackList(defendant string) bool {
