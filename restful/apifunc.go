@@ -36,6 +36,30 @@ func GetRewardInfo(w rest.ResponseWriter, r *rest.Request) {
 	resp = NewAPIResponse(err, rresult)
 }
 
+func GetRewardSubtotals(w rest.ResponseWriter, r *rest.Request) {
+	var resp *APIResponse
+	defer func() {
+		fmt.Println(fmt.Sprintf(PrintTime()+"Restful Api Call ----> GetRewardSubtotals ,err=%s", resp.ErrorMsg))
+		writejson(w, resp)
+	}()
+	var req RewardingReq
+	err := r.DecodeJsonPayload(&req)
+	if err != nil {
+		rest.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	var clientid = req.ClientID
+	var grandsuccess = req.GrantSuccess
+	//var rewardreason = req.RewardReason
+	var timefrom = req.TimeFrom
+	var timeTo = req.TimeTo
+
+	rresult, err := likeDB.SelectRewardSum(clientid, grandsuccess, timefrom, timeTo)
+
+	resp = NewAPIResponse(err, rresult)
+}
+
 // GetAllSetLikes
 func GetAllSetLikes(w rest.ResponseWriter, r *rest.Request) {
 	var resp *APIResponse

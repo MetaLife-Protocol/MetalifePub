@@ -187,9 +187,15 @@ type RewardResult struct {
 
 // RewardingReq
 type RewardingReq struct {
-	ClientID string `json:"client_id"`
-	//GrantSuccess string `json:"grant_success"`
+	ClientID     string `json:"client_id"`
+	GrantSuccess string `json:"grant_success"`
 	//RewardReason string `json:"reward_reason"`
 	TimeFrom int64 `json:"time_from"`
 	TimeTo   int64 `json:"time_to"`
+}
+
+// RewardSum
+type RewardSum struct {
+	RewardReason      string   `json:"reward_reason"`
+	GrantTokenAmounts *big.Int `json:"grant_token_amount_subtotals"`
 }

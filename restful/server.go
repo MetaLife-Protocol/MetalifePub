@@ -127,7 +127,7 @@ func Start(ctx *cli.Context) {
 		// tipped someone off 举报
 		rest.Post("/ssb/api/tipped-who-off", TippedOff),
 		//tipped off infomation 所有举报的信息汇总
-		rest.Get("/ssb/api/tippedoff-info", GetTippedOffInfo),
+		rest.Post("/ssb/api/tippedoff-info", GetTippedOffInfo),
 		//tippedoff-deal pub管理员对举报的信息进行处理，认证，如属实，则对该账号进行黑名单处理
 		rest.Post("/ssb/api/tippedoff-deal", DealTippedOff),
 
@@ -155,7 +155,9 @@ func Start(ctx *cli.Context) {
 			激励查询
 		*/
 		//get all or someones' reward information in PUB RULE
-		rest.Get("/ssb/api/get-reward-info", GetRewardInfo),
+		rest.Post("/ssb/api/get-reward-info", GetRewardInfo),
+
+		rest.Post("/ssb/api/get-reward-subtotals", GetRewardSubtotals),
 	)
 	if err != nil {
 		level.Error(log).Log("make router err", err)
@@ -720,7 +722,7 @@ func NewChannelDeal(partnerAddress string, clientID string, messageTime int64) (
 			//=======Record Reward Result=======
 			nowTime := time.Now().UnixNano() / 1e6
 			_, err = likeDB.RecordRewardResult(clientID, partnerAddress, "success", amount.Int64(), SignUp, "", messageTime, nowTime)
-			fmt.Println(fmt.Sprintf(PrintTime()+"===> Pub[RecordRewardResult] reword to eth-address=%s for clientid=%s, reason=%s, err=%s", partnerAddress, clientID, err))
+			fmt.Println(fmt.Sprintf(PrintTime()+"===> Pub[RecordRewardResult] reword to eth-address=%s for clientid=%s, reason=%s, err=%s", partnerAddress, clientID, SignUp, err))
 		}
 
 	} else {

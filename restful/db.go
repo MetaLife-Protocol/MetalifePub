@@ -179,6 +179,38 @@ func (pdb *PubDB) SelectRewardResult(clientid string, timefrom, timeto int64) (r
 	return
 }
 
+//SelectRewardSum
+func (pdb *PubDB) SelectRewardSum(clientid, grantsuccess string, timefrom, timeto int64) (rsum []*RewardSum, err error) {
+	var rows *sql.Rows
+	if grantsuccess == "" {
+		rows, err = pdb.db.Query("SELECT rewardreason,sum(granttoken) FROM rewardresult where clientid=? and rewardtime>=? and rewardtime<? group by rewardreason", clientid, timefrom, timeto)
+	} else {
+		rows, err = pdb.db.Query("SELECT rewardreason,sum(granttoken) FROM rewardresult where clientid=? and grantsuccess=? and rewardtime>=? and rewardtime<? group by rewardreason", clientid, grantsuccess, timefrom, timeto)
+	}
+	if err != nil {
+		return nil, err
+	}
+	infos := []*RewardSum{}
+	defer rows.Close()
+	for rows.Next() {
+		var reason string
+		var granttoken int64
+		err = rows.Scan(&reason, &granttoken)
+		if err != nil {
+			return nil, err
+		}
+		var r *RewardSum
+		amount := new(big.Int).Mul(big.NewInt(params.Ether), big.NewInt(granttoken))
+		r = &RewardSum{
+			RewardReason:      reason,
+			GrantTokenAmounts: amount,
+		}
+		infos = append(infos, r)
+	}
+	rsum = infos
+	return
+}
+
 // SelectRewardResult
 func (pdb *PubDB) SelectHistoryReward(clientId, rewardreason string, starttime, endtime int64) (awardTokenNum int64, err error) {
 	rows, err := pdb.db.Query("SELECT count(granttoken) FROM rewardresult where clientid=? and rewardreason=? and rewardtime>=? AND rewardtime<?", clientId, rewardreason, starttime, endtime)
