@@ -199,3 +199,8 @@ type RewardSum struct {
 	RewardReason      string   `json:"reward_reason"`
 	GrantTokenAmounts *big.Int `json:"grant_token_amount_subtotals"`
 }
+
+// IPLoacation
+type IPLoacation struct {
+	PublicIp string `json:"public_ip"`
+}

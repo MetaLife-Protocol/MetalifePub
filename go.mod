@@ -19,10 +19,12 @@ require (
 	github.com/dgraph-io/badger/v3 v3.2011.1
 	github.com/dgraph-io/sroar v0.0.0-20210524170324-9b164cbe6e02
 	github.com/dustin/go-humanize v1.0.0
+	github.com/ethereum/go-ethereum v1.8.17
 	github.com/go-kit/kit v0.10.0
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/gorilla/websocket v1.4.1
 	github.com/hashicorp/go-multierror v1.1.1
+	github.com/ip2location/ip2location-go/v9 v9.4.0
 	github.com/keks/persist v0.0.0-20210520094901-9bdd97c1fad2
 	github.com/keks/testops v0.1.0
 	github.com/kr/pretty v0.2.0 // indirect
@@ -57,5 +59,4 @@ require (
 	gonum.org/v1/gonum v0.0.0-20190904110519-2065cbd6b42a
 	gopkg.in/urfave/cli.v2 v2.0.0-20190806201727-b62605953717
 	modernc.org/kv v1.0.3
-	github.com/ethereum/go-ethereum v1.8.17
 )

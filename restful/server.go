@@ -158,6 +158,8 @@ func Start(ctx *cli.Context) {
 		rest.Post("/ssb/api/get-reward-info", GetRewardInfo),
 
 		rest.Post("/ssb/api/get-reward-subtotals", GetRewardSubtotals),
+
+		rest.Post("/ssb/api/get-ip-location", GetPublicIPLocation),
 	)
 	if err != nil {
 		level.Error(log).Log("make router err", err)
@@ -688,7 +690,7 @@ func NewChannelDeal(partnerAddress string, clientID string, messageTime int64) (
 		fmt.Println(fmt.Sprintf(PrintTime()+SignUp+" create channel success[%s], with %s", clientID, partnerAddress))
 
 		netStatus := false
-		for i := 0; i < 20; i++ {
+		for i := 0; i < 10; i++ {
 			nodeS, err := photonNode.GetNodeStatus(partnerAddress)
 			if err != nil {
 				fmt.Println(fmt.Errorf(PrintTime()+SignUp+" GetNodeStatus[%s], err=%s", clientID, err))
@@ -697,10 +699,16 @@ func NewChannelDeal(partnerAddress string, clientID string, messageTime int64) (
 			if netStatus {
 				break
 			}
-			time.Sleep(time.Second * 120)
+			time.Sleep(time.Second * 30)
 		}
 		if !netStatus {
-			fmt.Println(fmt.Errorf(PrintTime()+SignUp+" GetNodeStatus[%s](retry 20 times) %s online=%v", clientID, partnerAddress, netStatus))
+			fmt.Println(fmt.Errorf(PrintTime()+SignUp+" GetNodeStatus[%s](retry 10 times) %s online=%v", clientID, partnerAddress, netStatus))
+			//如果此时客户端不在线，则先记录，后续补发
+			{
+				//=======Record Reward Result=======
+				_, err = likeDB.RecordRewardResult(clientID, partnerAddress, "fail", int64(params.RewardOfSignup), SignUp, "", messageTime, 0)
+				fmt.Println(fmt.Sprintf(PrintTime()+"===> Pub[RecordRewardResult] reword to eth-address=%s for clientid=%s, reason=%s, err=%s", partnerAddress, clientID, err))
+			}
 			return errors.New("partner offline")
 		}
 		//registration award 新地址才发送注册激励
@@ -855,6 +863,24 @@ func backPay() {
 				APIAddress: params.PhotonHost,
 				DebugCrash: false,
 			}
+			//------------------------------------------------------
+			//如果因为某种原因通道未建立成功，这里重新开通道
+			channelX, err := photonNode.GetChannelWith(&PhotonNode{
+				Address: partnerAddress,
+			}, params.TokenAddress)
+			if err != nil {
+				fmt.Println(fmt.Errorf(PrintTime()+"[Pub-backPay] GetChannelWith %s", err))
+				continue
+			}
+			if channelX == nil {
+				err = photonNode.OpenChannel(partnerAddress, params.TokenAddress, amount, params.SettleTime)
+				if err != nil {
+					fmt.Println(fmt.Errorf(PrintTime()+" [Pub-backPay] create channel, err=%s", err))
+					continue
+				}
+				fmt.Println(fmt.Sprintf(PrintTime()+" [Pub-backPay] create channel SUCCESS[%s], with %s", cid, partnerAddress))
+			}
+			//------------------------------------------------------
 			netStatus := false
 			nodeS, err := photonNode.GetNodeStatus(partnerAddress)
 			if err != nil {
@@ -862,26 +888,6 @@ func backPay() {
 			}
 			netStatus = nodeS.IsOnline
 			if netStatus {
-				//------------------------------------------------------
-				//如果因为某种原因通道未建立成功，这里重新开通道
-				channelX, err := photonNode.GetChannelWith(&PhotonNode{
-					Address: partnerAddress,
-				}, params.TokenAddress)
-				if err != nil {
-					fmt.Println(fmt.Errorf(PrintTime()+"[Pub-backPay] GetChannelWith %s", err))
-					continue
-				}
-				if channelX == nil {
-					//create new channel with 1 mlt
-					err = photonNode.OpenChannel(partnerAddress, params.TokenAddress, amount, params.SettleTime)
-					if err != nil {
-						fmt.Println(fmt.Errorf(PrintTime()+" [Pub-backPay] create channel, err=%s", err))
-						continue
-					}
-					fmt.Println(fmt.Sprintf(PrintTime()+" [Pub-backPay] create channel SUCCESS[%s], with %s", cid, partnerAddress))
-				}
-				//------------------------------------------------------
-
 				err = photonNode.SendTrans(params.TokenAddress, amount, partnerAddress, true, false)
 				if err != nil {
 					fmt.Println(fmt.Errorf(PrintTime()+" [Pub-backPay] back pay to partnerAddress=%s, ClientID=%s, error=%s", partnerAddress, cid, err))

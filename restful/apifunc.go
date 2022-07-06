@@ -9,8 +9,38 @@ import (
 
 	"github.com/ant0ine/go-json-rest/rest"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ip2location/ip2location-go/v9"
 	"go.cryptoscope.co/ssb/restful/params"
 )
+
+// GetPublicIPLocation
+func GetPublicIPLocation(w rest.ResponseWriter, r *rest.Request) {
+	var resp *APIResponse
+	defer func() {
+		fmt.Println(fmt.Sprintf(PrintTime()+"Restful Api Call ----> GetPublicIpLocation ,err=%s", resp.ErrorMsg))
+		writejson(w, resp)
+	}()
+
+	var req IPLoacation
+	err := r.DecodeJsonPayload(&req)
+	if err != nil {
+		rest.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	var ip = req.PublicIp
+
+	db, err := ip2location.OpenDB(params.Ip2LocationLiteDbPath)
+	if err != nil {
+		rest.Error(w, err.Error(), http.StatusNotImplemented)
+		return
+	}
+	result, err := db.Get_all(ip)
+	if err != nil {
+		rest.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	resp = NewAPIResponse(err, result)
+}
 
 // GetSomeoneLike
 func GetRewardInfo(w rest.ResponseWriter, r *rest.Request) {

@@ -93,6 +93,9 @@ var RewardOfLikePost = 1
 // SensitiveWordsFilePath
 var SensitiveWordsFilePath = ""
 
+// Ip2LocationLiteDbPath
+var Ip2LocationLiteDbPath = ""
+
 // MaxDailyRewarding pub send mlt, instead of supernode
 var MaxDailyRewarding = 500
 
@@ -103,4 +106,4 @@ var MaxSignupReward = 2000
 var RoundTimeOfBackPay = time.Minute * 10
 
 //RoundTimeOfCheckChannelBalance
-var RoundTimeOfCheckChannelBalance = time.Minute * 10
+var RoundTimeOfCheckChannelBalance = time.Minute * 120

@@ -77,6 +77,7 @@ func init() {
 	//unixSockFlag.Value = filepath.Join(u.HomeDir, ".ssb-go", "socket")
 	dataDir.Value = filepath.Join(u.HomeDir, ".ssb-go", "pubdata")
 	sensitiveWordsFlag.Value = filepath.Join(u.HomeDir, ".ssb-go", "sensitive.txt")
+	params.Ip2LocationLiteDbPath = filepath.Join(u.HomeDir, ".ssb-go", "IP2LOCATION-LITE-DB11.IPV6.BIN")
 
 	log = term.NewColorLogger(os.Stderr, kitlog.NewLogfmtLogger, colorFn)
 }
