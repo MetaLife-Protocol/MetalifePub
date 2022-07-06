@@ -119,7 +119,7 @@ func (pdb *PubDB) UpdateRewardResult(cid, partnerAddress, grantSuccess string, m
 	return
 }
 
-// InsertRewardResult
+// RecordRewardResult
 func (pdb *PubDB) RecordRewardResult(clientId, ethAddress, grantSuccess string, grantToken int64, rewardReason, messageKey string, messageTime, rewardTime int64) (lastid int64, err error) {
 	grantToken = grantToken / params.Ether
 	stmt, err := pdb.db.Prepare("INSERT INTO rewardresult(clientid,ethaddress,grantsuccess,granttoken,rewardreason,messagekey,messagetime,rewardtime) VALUES (?,?,?,?,?,?,?,?)")

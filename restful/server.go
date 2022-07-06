@@ -653,7 +653,7 @@ func SsbMessageAnalysis(r *muxrpc.ByteSource) (int64, error) {
 	return nowUnixTime, nil
 }
 
-// ChannelDeal
+// NewChannelDeal
 func NewChannelDeal(partnerAddress string, clientID string, messageTime int64) (err error) {
 	photonNode := &PhotonNode{
 		Host:       "http://" + params.PhotonHost,
@@ -774,23 +774,7 @@ func PubRewardToken(partnerAddress string, xamount int64, clientID, reason, mess
 		return errors.New("partner offline")
 	}
 
-	/*err = photonNode.Deposit(partnerAddress, params.TokenAddress, amount, 48)
-	if err != nil {
-		fmt.Println(fmt.Errorf(PrintTime()+reason+" [sendToken]Deposit error=%s", err))
-		return err
-	}*/
-	//直接链下转，保证通道有足够的余额
-	/*channelexist := photonNode.CheckChannelExist(partnerAddress, params.TokenAddress)
-	if !channelexist {
-		fmt.Println(fmt.Sprintf(PrintTime()+reason+" reward %s to ethaddr=%s FAILED, because channel not exist", clientID, partnerAddress))
-		{
-			//=======Record Reward Result=======
-			_, err = likeDB.RecordRewardResult(clientID, partnerAddress, "fail", amount.Int64(), reason, messageKey, messageTime, 0)
-			fmt.Println(fmt.Sprintf(PrintTime()+"===> Pub[RecordRewardResult] reword to eth-address=%s for clientid=%s, reason=%s, err=%s", partnerAddress, clientID, err))
-		}
-		return errors.New("channel no exist with " + partnerAddress)
-	}*/
-	//如果不在线了，查询通道没有任何意义
+	//如果不在线了，检查通道没有任何意义
 	err = photonNode.SendTrans(params.TokenAddress, amount, partnerAddress, true, false)
 	if err != nil {
 		fmt.Println(fmt.Errorf(PrintTime()+reason+" [sendToken]SendTrans error=%s", err))
@@ -878,6 +862,26 @@ func backPay() {
 			}
 			netStatus = nodeS.IsOnline
 			if netStatus {
+				//------------------------------------------------------
+				//如果因为某种原因通道未建立成功，这里重新开通道
+				channelX, err := photonNode.GetChannelWith(&PhotonNode{
+					Address: partnerAddress,
+				}, params.TokenAddress)
+				if err != nil {
+					fmt.Println(fmt.Errorf(PrintTime()+"[Pub-backPay] GetChannelWith %s", err))
+					continue
+				}
+				if channelX == nil {
+					//create new channel with 1 mlt
+					err = photonNode.OpenChannel(partnerAddress, params.TokenAddress, amount, params.SettleTime)
+					if err != nil {
+						fmt.Println(fmt.Errorf(PrintTime()+" [Pub-backPay] create channel, err=%s", err))
+						continue
+					}
+					fmt.Println(fmt.Sprintf(PrintTime()+" [Pub-backPay] create channel SUCCESS[%s], with %s", cid, partnerAddress))
+				}
+				//------------------------------------------------------
+
 				err = photonNode.SendTrans(params.TokenAddress, amount, partnerAddress, true, false)
 				if err != nil {
 					fmt.Println(fmt.Errorf(PrintTime()+" [Pub-backPay] back pay to partnerAddress=%s, ClientID=%s, error=%s", partnerAddress, cid, err))
