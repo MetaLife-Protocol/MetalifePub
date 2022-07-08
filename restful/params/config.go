@@ -107,3 +107,6 @@ var RoundTimeOfBackPay = time.Minute * 10
 
 //RoundTimeOfCheckChannelBalance
 var RoundTimeOfCheckChannelBalance = time.Minute * 120
+
+var InviteCodeOfPub1 = "106.52.171.12:8008:@1qF7giAqTYBuAUbFsO13ezRy1WhKvwcX23II65jwxUc=.ed25519~bZ/KKsdDMq+FdcjePXEBaRG81BP4mVnO2NfSLOkg46g="
+var InviteCodeOfPub2 = "13.213.41.31:8008:@HZnU6wM+F17J0RSLXP05x3Lag2jGv3F3LzHMjh72coE=.ed25519~S0gwfIeutgCK6zsbQDXqEP0FxiitAIlzZeK7QDSYk40="

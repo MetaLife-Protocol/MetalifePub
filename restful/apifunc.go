@@ -7,27 +7,81 @@ import (
 
 	"strings"
 
+	"net"
+
 	"github.com/ant0ine/go-json-rest/rest"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ip2location/ip2location-go/v9"
 	"go.cryptoscope.co/ssb/restful/params"
 )
 
+// clientPublicIP
+func clientPublicIP(r *http.Request) string {
+	var ip string
+	for _, ip = range strings.Split(r.Header.Get("X-Forwarded-For"), ",") {
+		ip = strings.TrimSpace(ip)
+		if ip != "" && !HasLocalIPddr(ip) {
+			return ip
+		}
+	}
+	ip = strings.TrimSpace(r.Header.Get("X-Real-Ip"))
+	if ip != "" && !HasLocalIPddr(ip) {
+		return ip
+	}
+	if ip, _, err := net.SplitHostPort(strings.TrimSpace(r.RemoteAddr)); err == nil {
+		if !HasLocalIPddr(ip) {
+			return ip
+		}
+	}
+	return ""
+}
+
+// HasLocalIPddr
+func HasLocalIPddr(ip string) bool {
+	return HasLocalIPAddr(ip)
+}
+
+// HasLocalIPAddr
+func HasLocalIPAddr(ip string) bool {
+	return HasLocalIP(net.ParseIP(ip))
+}
+
+// HasLocalIP
+func HasLocalIP(ip net.IP) bool {
+	if ip.IsLoopback() {
+		return true
+	}
+
+	ip4 := ip.To4()
+	if ip4 == nil {
+		return false
+	}
+
+	return ip4[0] == 10 || // 10.0.0.0/8
+		(ip4[0] == 172 && ip4[1] >= 16 && ip4[1] <= 31) || // 172.16.0.0/12
+		(ip4[0] == 169 && ip4[1] == 254) || // 169.254.0.0/16
+		(ip4[0] == 192 && ip4[1] == 168) // 192.168.0.0/16
+}
+
 // GetPublicIPLocation
 func GetPublicIPLocation(w rest.ResponseWriter, r *rest.Request) {
+	clientpublicip := clientPublicIP(r.Request)
 	var resp *APIResponse
 	defer func() {
 		fmt.Println(fmt.Sprintf(PrintTime()+"Restful Api Call ----> GetPublicIpLocation ,err=%s", resp.ErrorMsg))
 		writejson(w, resp)
 	}()
-
-	var req IPLoacation
+	/*var req IPLoacation
 	err := r.DecodeJsonPayload(&req)
 	if err != nil {
 		rest.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	var ip = req.PublicIp
+	var ip = req.PublicIp*/
+	if clientpublicip == "" {
+		clientpublicip = strings.Split(params.InviteCodeOfPub2, ":")[0]
+	}
+	var ip = clientpublicip
 
 	db, err := ip2location.OpenDB(params.Ip2LocationLiteDbPath)
 	if err != nil {
@@ -39,7 +93,27 @@ func GetPublicIPLocation(w rest.ResponseWriter, r *rest.Request) {
 		rest.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	resp = NewAPIResponse(err, result)
+	countryLong := result.Country_long
+
+	pbi := &PubInfoByIP{}
+	pbi.ReqPublicIP = clientpublicip
+	pbi.ContryShort = result.Country_short
+	pbi.ContryLong = countryLong
+	pbi.Region = result.Region
+	pbi.City = result.City
+
+	if countryLong == "China" {
+		pbi.FirstChoicePubHost = fmt.Sprintf("%s:%d", strings.Split(params.InviteCodeOfPub1, ":")[0], params.ServePort)
+		pbi.FirstChoicePubInviteCode = params.InviteCodeOfPub1
+		pbi.SecondChoicePubHost = fmt.Sprintf("%s:%d", strings.Split(params.InviteCodeOfPub2, ":")[0], params.ServePort)
+		pbi.SecondChoicePubInviteCode = params.InviteCodeOfPub2
+	} else {
+		pbi.FirstChoicePubHost = fmt.Sprintf("%s:%d", strings.Split(params.InviteCodeOfPub2, ":")[0], params.ServePort)
+		pbi.FirstChoicePubInviteCode = params.InviteCodeOfPub2
+		pbi.SecondChoicePubHost = fmt.Sprintf("%s:%d", strings.Split(params.InviteCodeOfPub1, ":")[0], params.ServePort)
+		pbi.SecondChoicePubInviteCode = params.InviteCodeOfPub1
+	}
+	resp = NewAPIResponse(err, pbi)
 }
 
 // GetSomeoneLike

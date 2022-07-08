@@ -159,7 +159,7 @@ func Start(ctx *cli.Context) {
 
 		rest.Post("/ssb/api/get-reward-subtotals", GetRewardSubtotals),
 
-		rest.Post("/ssb/api/get-ip-location", GetPublicIPLocation),
+		rest.Get("/ssb/api/get-pubhost-by-ip", GetPublicIPLocation),
 	)
 	if err != nil {
 		level.Error(log).Log("make router err", err)

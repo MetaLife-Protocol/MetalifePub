@@ -204,3 +204,15 @@ type RewardSum struct {
 type IPLoacation struct {
 	PublicIp string `json:"public_ip"`
 }
+
+type PubInfoByIP struct {
+	ReqPublicIP               string `json:"req_public_ip"`
+	ContryShort               string `json:"country_short"`
+	ContryLong                string `json:"country_long"`
+	Region                    string `json:"region"`
+	City                      string `json:"city"`
+	FirstChoicePubHost        string `json:"first_choice_pub_host"`
+	FirstChoicePubInviteCode  string `json:"first_choice_pub_invite_code"`
+	SecondChoicePubHost       string `json:"second_choice_pub_host"`
+	SecondChoicePubInviteCode string `json:"second_choice_pub_invite_code"`
+}
