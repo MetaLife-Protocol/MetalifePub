@@ -717,20 +717,20 @@ func NewChannelDeal(partnerAddress string, clientID string, messageTime int64) (
 		if err != nil {
 			return err
 		}
-		fmt.Println(fmt.Sprintf(PrintTime()+SignUp+" award[%s] to %s, err=%s", clientID, partnerAddress, err))
+		fmt.Println(fmt.Sprintf(PrintTime()+SignUp+" award[%s] to %s, amount= %v, err= %v", clientID, partnerAddress, amount, err))
 
 		//继续发送SMT激励
 		err = photonNode.TransferSMT(partnerAddress, new(big.Int).Mul(big.NewInt(params.Ether), big.NewInt(int64(params.RewardOfSignupSMT))).String())
 		if err != nil {
 			return err
 		}
-		fmt.Println(fmt.Sprintf(PrintTime()+SignUp+" award(SMT)[%s] to %s, err=%s", clientID, partnerAddress, err))
+		fmt.Println(fmt.Sprintf(PrintTime()+SignUp+" award(SMT)[%s] to %s, amount=%v, err=%v", clientID, partnerAddress, err))
 
 		{
 			//=======Record Reward Result=======
 			nowTime := time.Now().UnixNano() / 1e6
-			_, err = likeDB.RecordRewardResult(clientID, partnerAddress, "success", amount.Int64(), SignUp, "", messageTime, nowTime)
-			fmt.Println(fmt.Sprintf(PrintTime()+"===> Pub[RecordRewardResult] reword to eth-address=%s for clientid=%s, reason=%s, err=%s", partnerAddress, clientID, SignUp, err))
+			_, err = likeDB.RecordRewardResult(clientID, partnerAddress, "success", int64(params.RewardOfSignup), SignUp, "", messageTime, nowTime)
+			fmt.Println(fmt.Sprintf(PrintTime()+"===> Pub[RecordRewardResult] reword to eth-address=%s for clientid=%s, reason=%s, err=%v", partnerAddress, clientID, SignUp, err))
 		}
 
 	} else {
@@ -776,7 +776,7 @@ func PubRewardToken(partnerAddress string, xamount int64, clientID, reason, mess
 		//如果此时客户端不在线，则先记录，后续补发
 		{
 			//=======Record Reward Result=======
-			_, err = likeDB.RecordRewardResult(clientID, partnerAddress, "fail", amount.Int64(), reason, messageKey, messageTime, 0)
+			_, err = likeDB.RecordRewardResult(clientID, partnerAddress, "fail", xamount, reason, messageKey, messageTime, 0)
 			fmt.Println(fmt.Sprintf(PrintTime()+"===> Pub[RecordRewardResult] reword to eth-address=%s for clientid=%s, reason=%s, err=%s", partnerAddress, clientID, err))
 		}
 		return errors.New("partner offline")
@@ -792,7 +792,7 @@ func PubRewardToken(partnerAddress string, xamount int64, clientID, reason, mess
 	{
 		//=======Record Reward Result=======
 		nowTime := time.Now().UnixNano() / 1e6
-		_, err = likeDB.RecordRewardResult(clientID, partnerAddress, "success", amount.Int64(), reason, messageKey, messageTime, nowTime)
+		_, err = likeDB.RecordRewardResult(clientID, partnerAddress, "success", xamount, reason, messageKey, messageTime, nowTime)
 		if err != nil {
 			fmt.Println(fmt.Sprintf(PrintTime()+"===> Pub[RecordRewardResult] reword to eth-address=%s for clientid=%s, reason=%s, FAILED, err=%s", partnerAddress, clientID, reason, err))
 		}

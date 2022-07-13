@@ -100,7 +100,7 @@ var Ip2LocationLiteDbPath = ""
 var MaxDailyRewarding = 500
 
 // MaxSignupReward
-var MaxSignupReward = 2000
+var MaxSignupReward = 2001
 
 //RoundTimeOfBackPay
 var RoundTimeOfBackPay = time.Minute * 10

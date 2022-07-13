@@ -4,6 +4,8 @@ import (
 	"math/big"
 	"time"
 
+	"fmt"
+
 	"go.cryptoscope.co/ssb/restful/params"
 )
 
@@ -42,15 +44,17 @@ func ExceedRewardLimit(clientID, rewardType string) bool {
 	//如果存在未发送成功的记录,也记为本次比较的数量，因为延后会继续处理未成功的事件
 	num, err := likeDB.SelectHistoryReward(clientID, rewardType, starttime, endtime)
 	if err != nil {
+		fmt.Println(fmt.Sprintf("ExceedRewardLimit SelectHistoryReward err =%v", err))
 		return true
 	}
-	historyTokens := big.NewInt(int64(num))
+	historyTokens := num
 	maxRewardTokes := big.NewInt(0)
 	if rewardType == SignUp {
 		maxRewardTokes = new(big.Int).Mul(big.NewInt(params.Ether), big.NewInt(int64(params.MaxSignupReward)))
 	} else {
 		maxRewardTokes = new(big.Int).Mul(big.NewInt(params.Ether), big.NewInt(int64(params.MaxDailyRewarding)))
 	}
+	fmt.Println(fmt.Sprintf("ExceedRewardLimit historyTokens=%v, maxRewardTokes=%v", historyTokens, maxRewardTokes))
 	if historyTokens.Cmp(maxRewardTokes) == -1 {
 		return false
 	} else {

@@ -121,7 +121,6 @@ func (pdb *PubDB) UpdateRewardResult(cid, partnerAddress, grantSuccess string, m
 
 // RecordRewardResult
 func (pdb *PubDB) RecordRewardResult(clientId, ethAddress, grantSuccess string, grantToken int64, rewardReason, messageKey string, messageTime, rewardTime int64) (lastid int64, err error) {
-	grantToken = grantToken / params.Ether
 	stmt, err := pdb.db.Prepare("INSERT INTO rewardresult(clientid,ethaddress,grantsuccess,granttoken,rewardreason,messagekey,messagetime,rewardtime) VALUES (?,?,?,?,?,?,?,?)")
 	if err != nil {
 		return 0, err
@@ -212,20 +211,20 @@ func (pdb *PubDB) SelectRewardSum(clientid, grantsuccess string, timefrom, timet
 }
 
 // SelectRewardResult
-func (pdb *PubDB) SelectHistoryReward(clientId, rewardreason string, starttime, endtime int64) (awardTokenNum int64, err error) {
-	rows, err := pdb.db.Query("SELECT count(granttoken) FROM rewardresult where clientid=? and rewardreason=? and rewardtime>=? AND rewardtime<?", clientId, rewardreason, starttime, endtime)
+func (pdb *PubDB) SelectHistoryReward(clientId, rewardreason string, starttime, endtime int64) (awardTokenNum *big.Int, err error) {
+	rows, err := pdb.db.Query("SELECT sum(granttoken) FROM rewardresult where clientid=? and rewardreason=? and rewardtime>=? AND rewardtime<?", clientId, rewardreason, starttime, endtime)
 	if err != nil {
-		return 0, err
+		return big.NewInt(0), err
 	}
-	awardTokenNum = 0
+	awardTokenNum = big.NewInt(0)
 	defer rows.Close()
 	for rows.Next() {
 		var awardtokennum int64
 		errnil := rows.Scan(&awardtokennum)
 		if errnil != nil {
-			return 0, errnil
+			return big.NewInt(0), nil
 		}
-		awardTokenNum = awardtokennum
+		awardTokenNum = new(big.Int).Mul(big.NewInt(params.Ether), big.NewInt(awardtokennum))
 		break
 	}
 	return
