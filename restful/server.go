@@ -857,6 +857,7 @@ func backPay() {
 			amount := info.GrantTokenAmount
 			cid := info.ClientID
 			msgtime := info.MessageTime
+			reason := info.RewardReason
 			photonNode := &PhotonNode{
 				Host:       "http://" + params.PhotonHost,
 				Address:    params.PhotonAddress,
@@ -893,6 +894,15 @@ func backPay() {
 					fmt.Println(fmt.Errorf(PrintTime()+" [Pub-backPay] back pay to partnerAddress=%s, ClientID=%s, error=%s", partnerAddress, cid, err))
 					continue
 				}
+				//对sign up 补发SMT激励
+				if reason == SignUp {
+					err = photonNode.TransferSMT(partnerAddress, new(big.Int).Mul(big.NewInt(params.Ether), big.NewInt(int64(params.RewardOfSignupSMT))).String())
+					if err != nil {
+						continue
+					}
+					fmt.Println(fmt.Sprintf(PrintTime()+" [Pub-backPay] award(SMT) to %s, amount=%v, err=%v", partnerAddress, err))
+				}
+
 				_, err = likeDB.UpdateRewardResult(cid, partnerAddress, "success", msgtime)
 				if err != nil {
 					fmt.Println(fmt.Errorf(PrintTime()+" [Pub-backPay] back pay to partnerAddress=%s, ClientID=%s success,but RecordRewardResult error=%s", partnerAddress, cid, err))
