@@ -61,7 +61,7 @@ var ServePort = 10008
 var MsgScanInterval = time.Second * 15
 
 // minBalanceInchannel pub与客户端通道的最小资金，保障三方转账余额足够
-var MinBalanceInchannel = 1000
+var MinBalanceInchannel = 100
 
 // PubID this
 var PubID = ""
@@ -70,10 +70,10 @@ var PubID = ""
 var RewardOfReportProblematicPost = 100
 
 // RewardOfSignup
-var RewardOfSignup = 1000
+var RewardOfSignup = 300
 
 // RewardOfSignupSMT
-var RewardOfSignupSMT = 50
+var RewardOfSignupSMT = 10
 
 // RewardOfDailyLogin
 var RewardOfDailyLogin = 10
@@ -100,7 +100,7 @@ var Ip2LocationLiteDbPath = ""
 var MaxDailyRewarding = 500
 
 // MaxSignupReward
-var MaxSignupReward = 2001
+var MaxSignupReward = 601
 
 //RoundTimeOfBackPay
 var RoundTimeOfBackPay = time.Minute * 10

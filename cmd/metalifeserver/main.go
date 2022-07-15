@@ -100,7 +100,8 @@ var app = cli.App{
 		&cli.IntFlag{Name: "message-scan-interval", Value: 60, Usage: "the time interval at which messages are scanned and calculated (unit:second)."},
 		&cli.IntFlag{Name: "min-balance-inchannel", Value: 1, Usage: "minimum balance in photon channel between this pub and ssb client (unit: 1e18 wei)."},
 		&cli.IntFlag{Name: "report-rewarding", Value: 0, Usage: "pub will reward the person who provides the report (if the report is true). (unit: 1e15 wei)"},
-		&cli.IntFlag{Name: "registration-rewarding", Value: 0, Usage: "pub will reward the person who provides ethereum address for his ssb client. (unit: 1e15 wei)"},
+		&cli.IntFlag{Name: "registration-rewarding-mlt", Value: 0, Usage: "pub will reward the person who provides ethereum address for his ssb client. (unit: 1e15 wei)"},
+		&cli.IntFlag{Name: "registration-rewarding-smt", Value: 0, Usage: "pub will reward the person who provides ethereum address for his ssb client. (unit: 1e15 wei)"},
 		&sensitiveWordsFlag,
 		&keyFileFlag,
 		&unixSockFlag,
@@ -213,11 +214,17 @@ func initClient(ctx *cli.Context) error {
 	}
 	params.RewardOfReportProblematicPost = reportrewarding
 
-	registrationawarding := ctx.Int("registration-rewarding")
+	registrationawarding := ctx.Int("registration-rewarding-mlt")
 	if registrationawarding < 0 {
-		return fmt.Errorf("registration-rewarding %v error", registrationawarding)
+		return fmt.Errorf("registration-rewarding-mlt %v error", registrationawarding)
 	}
 	params.RewardOfSignup = registrationawarding
+
+	registrationawardSMT := ctx.Int("registration-rewarding-smt")
+	if registrationawardSMT < 0 {
+		return fmt.Errorf("registration-rewarding-smt %v error", registrationawardSMT)
+	}
+	params.RewardOfSignupSMT = registrationawardSMT
 
 	sensitivewordsfilepath := ctx.String("sensitive-words-file")
 	if sensitivewordsfilepath == "" {
@@ -245,6 +252,8 @@ func initClient(ctx *cli.Context) error {
 		time.Sleep(1 * time.Second)
 		os.Exit(0)
 	}()
+
+	fmt.Println(fmt.Sprintf("\n******os.args=%q", os.Args))
 
 	//start pub message analysis service
 	restful.Start(ctx)

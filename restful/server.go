@@ -680,7 +680,7 @@ func NewChannelDeal(partnerAddress string, clientID string, messageTime int64) (
 			fmt.Println(fmt.Errorf(PrintTime()+SignUp+" reward %s to ethaddr=%s REJECT,reason:ExceedRewardLimit", clientID, partnerAddress))
 			return
 		}
-		//create new channel with 1 mlt
+		//create new channel with  mlt
 		initRegistAmount := int64(params.MinBalanceInchannel + params.RewardOfSignup)
 		err = photonNode.OpenChannel(partnerNode.Address, params.TokenAddress, new(big.Int).Mul(big.NewInt(params.Ether), big.NewInt(initRegistAmount)), params.SettleTime)
 		if err != nil {
@@ -707,7 +707,7 @@ func NewChannelDeal(partnerAddress string, clientID string, messageTime int64) (
 			{
 				//=======Record Reward Result=======
 				_, err = likeDB.RecordRewardResult(clientID, partnerAddress, "fail", int64(params.RewardOfSignup), SignUp, "", messageTime, 0)
-				fmt.Println(fmt.Sprintf(PrintTime()+"===> Pub[RecordRewardResult] reword to eth-address=%s for clientid=%s, reason=%s, err=%s", partnerAddress, clientID, err))
+				fmt.Println(fmt.Sprintf(PrintTime()+SignUp+" but offline ,then[RecordRewardResult] reword to eth-address=%s for clientid=%s, reason=%s, err=%s", partnerAddress, clientID, err))
 			}
 			return errors.New("partner offline")
 		}
@@ -720,17 +720,18 @@ func NewChannelDeal(partnerAddress string, clientID string, messageTime int64) (
 		fmt.Println(fmt.Sprintf(PrintTime()+SignUp+" award[%s] to %s, amount= %v, err= %v", clientID, partnerAddress, amount, err))
 
 		//继续发送SMT激励
-		err = photonNode.TransferSMT(partnerAddress, new(big.Int).Mul(big.NewInt(params.Ether), big.NewInt(int64(params.RewardOfSignupSMT))).String())
+		smtAmount := new(big.Int).Mul(big.NewInt(params.Ether), big.NewInt(int64(params.RewardOfSignupSMT)))
+		err = photonNode.TransferSMT(partnerAddress, smtAmount.String())
 		if err != nil {
 			return err
 		}
-		fmt.Println(fmt.Sprintf(PrintTime()+SignUp+" award(SMT)[%s] to %s, amount=%v, err=%v", clientID, partnerAddress, err))
+		fmt.Println(fmt.Sprintf(PrintTime()+SignUp+" award(SMT)[%s] to %s, amount=%v, err=%v", clientID, partnerAddress, smtAmount, err))
 
 		{
 			//=======Record Reward Result=======
 			nowTime := time.Now().UnixNano() / 1e6
 			_, err = likeDB.RecordRewardResult(clientID, partnerAddress, "success", int64(params.RewardOfSignup), SignUp, "", messageTime, nowTime)
-			fmt.Println(fmt.Sprintf(PrintTime()+"===> Pub[RecordRewardResult] reword to eth-address=%s for clientid=%s, reason=%s, err=%v", partnerAddress, clientID, SignUp, err))
+			fmt.Println(fmt.Sprintf(PrintTime()+SignUp+"[RecordRewardResult] reword to eth-address=%s for clientid=%s, reason=%s, err=%v", partnerAddress, clientID, SignUp, err))
 		}
 
 	} else {
@@ -777,7 +778,7 @@ func PubRewardToken(partnerAddress string, xamount int64, clientID, reason, mess
 		{
 			//=======Record Reward Result=======
 			_, err = likeDB.RecordRewardResult(clientID, partnerAddress, "fail", xamount, reason, messageKey, messageTime, 0)
-			fmt.Println(fmt.Sprintf(PrintTime()+"===> Pub[RecordRewardResult] reword to eth-address=%s for clientid=%s, reason=%s, err=%s", partnerAddress, clientID, err))
+			fmt.Println(fmt.Sprintf(PrintTime()+"offline,then[RecordRewardResult] reword to eth-address=%s for clientid=%s, reason=%s, err=%v", partnerAddress, clientID, reason, err))
 		}
 		return errors.New("partner offline")
 	}
@@ -794,9 +795,9 @@ func PubRewardToken(partnerAddress string, xamount int64, clientID, reason, mess
 		nowTime := time.Now().UnixNano() / 1e6
 		_, err = likeDB.RecordRewardResult(clientID, partnerAddress, "success", xamount, reason, messageKey, messageTime, nowTime)
 		if err != nil {
-			fmt.Println(fmt.Sprintf(PrintTime()+"===> Pub[RecordRewardResult] reword to eth-address=%s for clientid=%s, reason=%s, FAILED, err=%s", partnerAddress, clientID, reason, err))
+			fmt.Println(fmt.Sprintf(PrintTime()+"[RecordRewardResult] reword to eth-address=%s for clientid=%s, reason=%s, FAILED, err=%s", partnerAddress, clientID, reason, err))
 		}
-		fmt.Println(fmt.Sprintf(PrintTime()+"===> Pub[RecordRewardResult] reword to eth-address=%s for clientid=%s, reason=%s, SUCCESS", partnerAddress, clientID, reason))
+		fmt.Println(fmt.Sprintf(PrintTime()+"[RecordRewardResult] reword to eth-address=%s for clientid=%s, reason=%s, SUCCESS", partnerAddress, clientID, reason))
 	}
 	return
 }
